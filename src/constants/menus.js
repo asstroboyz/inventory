@@ -1,0 +1,16 @@
+export const menus = [
+  { name: 'Dashboard', path: '/dashboard' },
+  { name: 'Forms', path: '/forms' },
+  { name: 'Cards', path: '/cards' },
+  { name: 'Charts', path: '/charts' },
+  { name: 'Buttons', path: '/buttons' },
+  { name: 'Modals', path: '/modals' },
+  { name: 'Tables', path: '/tables' },
+  { name: 'Login', path: '/login' },
+  { name: 'Create Account', path: '/create-account' },
+  { name: 'Forgot Password', path: '/forgot-password' },
+  { name: 'Profile', path: '/profile' },
+  { name: 'Change Password', path: '/change-password' },
+  { name: '404', path: '/404' },
+  { name: 'Blank', path: '/blank' },
+]

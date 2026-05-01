@@ -1,50 +1,60 @@
-import React, { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
+import { Toaster } from 'react-hot-toast'
+import { UserHelper } from './helper/user'
 
-const Login = lazy(() => import('./pages/Login'))
-const CreateAccount = lazy(() => import('./pages/CreateAccount'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Forms = lazy(() => import('./pages/Forms'))
-const Cards = lazy(() => import('./pages/Cards'))
-const Charts = lazy(() => import('./pages/Charts'))
-const Buttons = lazy(() => import('./pages/Buttons'))
-const Modals = lazy(() => import('./pages/Modals'))
-const Tables = lazy(() => import('./pages/Tables'))
-const Page404 = lazy(() => import('./pages/404'))
-const Blank = lazy(() => import('./pages/Blank'))
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const Profile = lazy(() => import('./pages/Profile'))
-const ChangePassword = lazy(() => import('./pages/ChangePassword'))
+import Login from './pages/Login'
+import CreateAccount from './pages/CreateAccount'
+import Dashboard from './pages/Dashboard'
+import Forms from './pages/Forms'
+import Cards from './pages/Cards'
+import Charts from './pages/Charts'
+import Buttons from './pages/Buttons'
+import Modals from './pages/Modals'
+import Tables from './pages/Tables'
+import Page404 from './pages/404'
+import Blank from './pages/Blank'
+import ForgotPassword from './pages/ForgotPassword'
+import Profile from './pages/Profile'
+import ChangePassword from './pages/ChangePassword'
+import Bagian from './pages/Master/Bagian'
+import Otoritas from './pages/Master/Otoritas'
+import Pegawai from './pages/Master/Pegawai'
+
+function PrivateRoute({ children }) {
+  return UserHelper.isAuthenticated() ? children : <Navigate to="/login" replace />
+}
 
 function App() {
   return (
     <ThemeProvider>
+      <Toaster position="top-right" reverseOrder={false} />
       <Router>
-        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 text-purple-600">Loading...</div>}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/create-account" element={<CreateAccount />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/forms" element={<Forms />} />
-            <Route path="/cards" element={<Cards />} />
-            <Route path="/charts" element={<Charts />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/modals" element={<Modals />} />
-            <Route path="/tables" element={<Tables />} />
-            <Route path="/404" element={<Page404 />} />
-            <Route path="/blank" element={<Blank />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/change-password" element={<ChangePassword />} />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/create-account" element={<CreateAccount />} />
+          
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/forms" element={<PrivateRoute><Forms /></PrivateRoute>} />
+          <Route path="/cards" element={<PrivateRoute><Cards /></PrivateRoute>} />
+          <Route path="/charts" element={<PrivateRoute><Charts /></PrivateRoute>} />
+          <Route path="/buttons" element={<PrivateRoute><Buttons /></PrivateRoute>} />
+          <Route path="/modals" element={<PrivateRoute><Modals /></PrivateRoute>} />
+          <Route path="/tables" element={<PrivateRoute><Tables /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/change-password" element={<PrivateRoute><ChangePassword /></PrivateRoute>} />
+          <Route path="/master/bagian" element={<PrivateRoute><Bagian /></PrivateRoute>} />
+          <Route path="/master/otoritas" element={<PrivateRoute><Otoritas /></PrivateRoute>} />
+          <Route path="/master/pegawai" element={<PrivateRoute><Pegawai /></PrivateRoute>} />
+          <Route path="/blank" element={<PrivateRoute><Blank /></PrivateRoute>} />
 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/404" element={<Page404 />} />
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </Router>
     </ThemeProvider>
   )

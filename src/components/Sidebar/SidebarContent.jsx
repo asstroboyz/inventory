@@ -1,248 +1,247 @@
-import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
-
-const routes = [
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/forms',
-    name: 'Forms',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/cards',
-    name: 'Cards',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/charts',
-    name: 'Charts',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
-        <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/buttons',
-    name: 'Buttons',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/modals',
-    name: 'Modals',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-      </svg>
-    ),
-  },
-  {
-    path: '/tables',
-    name: 'Tables',
-    icon: (
-      <svg
-        className="w-5 h-5"
-        aria-hidden="true"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-      </svg>
-    ),
-  },
-]
+import { useState, useContext } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ThemeContext } from '../../context/ThemeContext'
+import { menus } from '../../constants/menus'
+import {
+  HiChartPie,
+  HiUserCircle,
+  HiIdentification,
+  HiBeaker,
+  HiChevronDown,
+  HiUsers,
+  HiCube,
+  HiRefresh,
+  HiCog,
+  HiSwitchHorizontal,
+  HiShieldCheck,
+  HiUserGroup,
+  HiOfficeBuilding,
+  HiTag,
+  HiClipboardList,
+  HiTruck,
+  HiLogin,
+  HiLogout,
+  HiCollection,
+  HiArchive,
+  HiPlus
+} from 'react-icons/hi'
 
 function SidebarContent() {
   const location = useLocation()
-  const [isPagesMenuOpen, setIsPagesMenuOpen] = React.useState(false)
+  const navigate = useNavigate()
+  const { closeSideMenu } = useContext(ThemeContext)
 
-  function togglePagesMenu() {
-    setIsPagesMenuOpen(!isPagesMenuOpen)
+  // State for Dropdowns
+  const [openMenus, setOpenMenus] = useState({
+    masterPegawai: false,
+    masterProduct: false,
+    history: false,
+    transaksi: false,
+    development: false
+  })
+
+  const toggleMenu = (menu) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [menu]: !prev[menu]
+    }))
   }
 
+  const [searchQuery, setSearchQuery] = useState('')
+  const [results, setResults] = useState([])
+
+  const handleSearch = (e) => {
+    const query = e.target.value
+    setSearchQuery(query)
+    if (query.length > 0) {
+      const filtered = menus.filter((menu) =>
+        menu.name.toLowerCase().includes(query.toLowerCase())
+      )
+      setResults(filtered)
+    } else {
+      setResults([])
+    }
+  }
+
+  const handleSelect = (path) => {
+    navigate(path)
+    setSearchQuery('')
+    setResults([])
+    closeSideMenu()
+  }
+
+  const isActive = (path) => location.pathname === path
+
   return (
-    <div className="py-4 text-gray-500 dark:text-gray-400">
-      <Link
-        to="/"
-        className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200 flex gap-[2px]"
-      >
+    <div className="py-4 text-gray-500 dark:text-gray-400 flex flex-col h-full">
+      <Link to="/" className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200 flex gap-[2px]">
         {"asstroboyz".split("").map((char, i) => (
-          <span
-            key={i}
-            className="inline-block"
-            style={{
-              animation: `wave 1.5s ease-in-out infinite`,
-              animationDelay: `${i * 0.1}s`,
-            }}
-          >
-            {char}
-          </span>
+          <span key={i} className="inline-block" style={{ animation: `wave 1.5s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }}>{char}</span>
         ))}
       </Link>
-      <ul className="mt-6">
-        {routes.map((route) => (
-          <li className="relative px-6 py-3" key={route.name}>
-            {location.pathname === route.path && (
-              <span
-                className="absolute inset-y-0 left-0 w-1 bg-purple-600 rounded-tr-lg rounded-br-lg"
-                aria-hidden="true"
-              ></span>
-            )}
-            <Link
-              className={`inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200 ${location.pathname === route.path ? 'text-gray-800 dark:text-gray-100' : ''
-                }`}
-              to={route.path}
-            >
-              {route.icon}
-              <span className="ml-4">{route.name}</span>
-            </Link>
-          </li>
-        ))}
 
-        <li className="relative px-6 py-3">
-          <button
-            className="inline-flex items-center justify-between w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"
-            onClick={togglePagesMenu}
-            aria-haspopup="true"
-          >
-            <span className="inline-flex items-center">
-              <svg
-                className="w-5 h-5"
-                aria-hidden="true"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-              </svg>
-              <span className="ml-4">Pages</span>
-            </span>
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${isPagesMenuOpen ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              ></path>
-            </svg>
-          </button>
-          {isPagesMenuOpen && (
-            <ul
-              className="p-2 mt-2 space-y-2 overflow-hidden text-sm font-medium text-gray-500 rounded-md shadow-inner bg-gray-50 dark:text-gray-400 dark:bg-gray-900"
-              aria-label="submenu"
-            >
-              <li className="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                <Link className="w-full" to="/login">Login</Link>
-              </li>
-              <li className="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                <Link className="w-full" to="/create-account">Create account</Link>
-              </li>
-              <li className="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                <Link className="w-full" to="/forgot-password">Forgot password</Link>
-              </li>
-              <li className="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                <Link className="w-full" to="/404">404</Link>
-              </li>
-            </ul>
+      {/* Mobile Search */}
+      <div className="px-6 mt-6 md:hidden">
+        <div className="relative w-full text-purple-600">
+          <input
+            className="w-full pl-8 pr-2 py-2 text-sm text-gray-700 bg-gray-100 border-transparent rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:shadow-outline-purple form-input"
+            type="text"
+            placeholder="Search menus..."
+            value={searchQuery}
+            onChange={handleSearch}
+          />
+          {results.length > 0 && (
+            <div className="absolute w-full mt-2 bg-white rounded-md shadow-lg dark:bg-gray-800 z-50 overflow-hidden border border-gray-100 dark:border-gray-700">
+              <ul className="py-1">
+                {results.map((result) => (
+                  <li key={result.path}>
+                    <button
+                      className="block w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-purple-100 dark:hover:bg-purple-600 transition-colors duration-150"
+                      onClick={() => handleSelect(result.path)}
+                    >
+                      {result.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-        </li>
-      </ul>
-      <div className="px-6 my-6">
-        <Link
-          to="/create-account"
-          className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"
-        >
-          Create account
-          <span className="ml-2" aria-hidden="true">+</span>
-        </Link>
+        </div>
       </div>
+
+      <ul className="mt-6 flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+        {/* --- DASHBOARD --- */}
+        <MainMenuItem to="/dashboard" name="Dashboard" icon={<HiChartPie className="w-5 h-5" />} active={isActive('/dashboard')} />
+
+        {/* --- PROFILE --- */}
+        <MainMenuItem to="/profile" name="Profile Saya" icon={<HiUserCircle className="w-5 h-5" />} active={isActive('/profile')} />
+
+
+        {/* --- MASTER PEGAWAI --- */}
+        <DropdownMenuItem
+          name="Master Pegawai"
+          icon={<HiUsers className="w-5 h-5" />}
+          isOpen={openMenus.masterPegawai}
+          onClick={() => toggleMenu('masterPegawai')}
+        >
+          <SubMenuItem to="/master/otoritas" name="Otoritas" icon={<HiShieldCheck className="w-4 h-4" />} />
+          <SubMenuItem to="/master/pegawai" name="Pegawai" icon={<HiUserGroup className="w-4 h-4" />} />
+          <SubMenuItem to="/master/bagian" name="Bagian" icon={<HiOfficeBuilding className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- MASTER PRODUCT --- */}
+        <DropdownMenuItem
+          name="Master Product"
+          icon={<HiCube className="w-5 h-5" />}
+          isOpen={openMenus.masterProduct}
+          onClick={() => toggleMenu('masterProduct')}
+        >
+          <SubMenuItem to="/master/barang" name="Barang" icon={<HiArchive className="w-4 h-4" />} />
+          <SubMenuItem to="/master/merk" name="Merk" icon={<HiTag className="w-4 h-4" />} />
+          <SubMenuItem to="/master/satuan" name="Satuan" icon={<HiCollection className="w-4 h-4" />} />
+          <SubMenuItem to="/master/supplier" name="Supplier" icon={<HiTruck className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- TRANSAKSI --- */}
+        <DropdownMenuItem
+          name="Transaksi"
+          icon={<HiSwitchHorizontal className="w-5 h-5" />}
+          isOpen={openMenus.transaksi}
+          onClick={() => toggleMenu('transaksi')}
+        >
+          <SubMenuItem to="/transaksi/peminjaman" name="Peminjaman Alat" icon={<HiClipboardList className="w-4 h-4" />} />
+          <SubMenuItem to="/transaksi/pengadaan" name="Pengadaan Barang" icon={<HiPlus className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- PEMELIHARAAN (Asset Management) --- */}
+        <MainMenuItem to="/maintenance" name="Manajemen Aset" icon={<HiCog className="w-5 h-5" />} active={isActive('/maintenance')} />
+
+        {/* --- HISTORY --- */}
+        <DropdownMenuItem
+          name="History"
+          icon={<HiRefresh className="w-5 h-5" />}
+          isOpen={openMenus.history}
+          onClick={() => toggleMenu('history')}
+        >
+          <SubMenuItem to="/history/in" name="Trans In" icon={<HiLogin className="w-4 h-4" />} />
+          <SubMenuItem to="/history/out" name="Trans Out" icon={<HiLogout className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- DEVELOPMENT DROPDOWN --- */}
+        <div className="px-6 my-6">
+          <div className="h-[3px] w-full bg-gray-200 dark:bg-gray-600 rounded-full"></div>
+        </div>
+
+        <div className="">
+          <DropdownMenuItem
+            name="Development"
+            icon={<HiBeaker className="w-5 h-5 opacity-50" />}
+            isOpen={openMenus.development}
+            onClick={() => toggleMenu('development')}
+            colorClass="text-gray-400"
+          >
+            <SubMenuItem to="/forms" name="Forms" />
+            <SubMenuItem to="/cards" name="Cards" />
+            <SubMenuItem to="/charts" name="Charts" />
+            <SubMenuItem to="/buttons" name="Buttons" />
+            <SubMenuItem to="/modals" name="Modals" />
+            <SubMenuItem to="/tables" name="Tables" />
+          </DropdownMenuItem>
+        </div>
+      </ul>
+
     </div>
+  )
+}
+
+function MainMenuItem({ to, name, icon, active }) {
+  return (
+    <li className="relative px-6 py-3">
+      {active && (
+        <span className="absolute inset-y-0 left-0 w-1 bg-purple-600 rounded-tr-lg rounded-br-lg" aria-hidden="true"></span>
+      )}
+      <Link
+        className={`inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200 ${active ? 'text-gray-800 dark:text-gray-100' : ''}`}
+        to={to}
+      >
+        {icon}
+        <span className="ml-4">{name}</span>
+      </Link>
+    </li>
+  )
+}
+
+function DropdownMenuItem({ name, icon, isOpen, onClick, children, colorClass = "text-gray-500" }) {
+  return (
+    <li className="relative px-6 py-3">
+      <button
+        className={`inline-flex items-center justify-between w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200 ${colorClass}`}
+        onClick={onClick}
+        aria-haspopup="true"
+      >
+        <span className="inline-flex items-center">
+          {icon}
+          <span className="ml-4">{name}</span>
+        </span>
+        <HiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <ul className="p-2 mt-2 space-y-2 overflow-hidden text-sm font-medium text-gray-500 rounded-md shadow-inner bg-gray-50 dark:text-gray-400 dark:bg-gray-900 animate-in slide-in-from-top-2 duration-200">
+          {children}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+function SubMenuItem({ to, name, active, icon }) {
+  return (
+    <li className="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
+      <Link className={`flex items-center w-full ${active ? 'text-gray-800 dark:text-gray-100 font-bold' : ''}`} to={to}>
+        {icon && <span className="mr-3 opacity-70">{icon}</span>}
+        <span>{name}</span>
+      </Link>
+    </li>
   )
 }
 

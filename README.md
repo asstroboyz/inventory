@@ -1,16 +1,66 @@
-# React + Vite
+# Inventory Management System - Frontend (v1.0.0)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Antarmuka pengguna (UI) modern untuk sistem manajemen inventaris, dibangun dengan fokus pada performa, estetika premium, dan stabilitas menggunakan React 19.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Fitur Frontend
+- **Premium Dashboard**: Visualisasi data dengan desain modern.
+- **Master Data UI**: Manajemen Pegawai, Bagian, dan Otoritas dengan tabel kustom.
+- **Custom Premium Table**: Native implementation untuk performa maksimal di React 19 (Zero third-party table library).
+- **Glassmorphism UI**: Efek blur transparan yang elegan di seluruh komponen.
+- **Full Dark Mode Support**: Transisi tema gelap dan terang yang halus.
+- **Responsive Sidebar**: Navigasi yang bersih dengan dropdown dan menu development.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
+- **Framework**: React 19
+- **Bundler**: Vite
+- **Styling**: Tailwind CSS
+- **Icons**: React Icons (Hi)
+- **Context**: Theme Context (Dark/Light Mode)
+- **Routing**: React Router DOM v6
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📝 Update Log (Frontend)
+
+### **Mei 1, 2026**
+- **Table System Overhaul**: Mengganti `react-data-table-component` dengan **Custom Premium Table** (Native Tailwind) untuk memperbaiki error rendering di React 19.
+- **API Integration**: Implementasi mapping data baru untuk `list_otoritas` dan `bagian`.
+- **CRUD Stabilization**: Sinkronisasi fitur Toggle Status dengan backend via endpoint `UpdateAdmin`.
+- **Sidebar Polishing**:
+    - Menghapus tombol "Lengkapi Berkas" yang redundan.
+    - Menyesuaikan jarak menu Development.
+    - Menambahkan divider pill-shaped.
+- **Watermark Layout**: Menambahkan identitas author di footer layout utama.
+
+---
+
+## ⚙️ Panduan Instalasi (Frontend)
+
+### Prasyarat
+- Node.js (versi terbaru direkomendasikan)
+- npm atau yarn
+
+### Langkah Instalasi
+1. Clone repository atau masuk ke folder `inventory-fe`.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Konfigurasi Endpoint API:
+   Pastikan file `src/helper/api.js` sudah mengarah ke URL backend yang benar (default: `http://localhost:8080`).
+
+4. Jalankan aplikasi:
+   ```bash
+   npm run dev
+   ```
+5. Akses aplikasi di browser melalui: `http://localhost:5173`.
+
+---
+
+## 👤 Author
+**Risdandi Ganda Gunawan**  
+*Front-end Engineer & UI Enthusiast*
