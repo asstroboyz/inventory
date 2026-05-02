@@ -20,6 +20,19 @@ import ChangePassword from './pages/ChangePassword'
 import Bagian from './pages/Master/Bagian'
 import Otoritas from './pages/Master/Otoritas'
 import Pegawai from './pages/Master/Pegawai'
+import JenisBarang from './pages/Master/JenisBarang'
+import Merk from './pages/Master/Merk'
+import Ruangan from './pages/Master/Ruangan'
+import Satuan from './pages/Master/Satuan'
+import Supplier from './pages/Master/Supplier'
+import MasterBarang from './pages/Master/MasterBarang'
+import Pengadaan from './pages/Transaksi/Pengadaan'
+import Permintaan from './pages/Transaksi/Permintaan'
+import Maintenance from './pages/Maintenance'
+import TransIn from './pages/History/TransIn'
+import TransOut from './pages/History/TransOut'
+import StokBarang from './pages/Record/StokBarang'
+import StokInventaris from './pages/Record/StokInventaris'
 
 function PrivateRoute({ children }) {
   return UserHelper.isAuthenticated() ? children : <Navigate to="/login" replace />
@@ -33,7 +46,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/create-account" element={<CreateAccount />} />
-          
+
           {/* Protected Routes */}
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/forms" element={<PrivateRoute><Forms /></PrivateRoute>} />
@@ -47,6 +60,19 @@ function App() {
           <Route path="/master/bagian" element={<PrivateRoute><Bagian /></PrivateRoute>} />
           <Route path="/master/otoritas" element={<PrivateRoute><Otoritas /></PrivateRoute>} />
           <Route path="/master/pegawai" element={<PrivateRoute><Pegawai /></PrivateRoute>} />
+          <Route path="/master/jenis-barang" element={<PrivateRoute><JenisBarang /></PrivateRoute>} />
+          <Route path="/master/merk" element={<PrivateRoute><Merk /></PrivateRoute>} />
+          <Route path="/master/ruangan" element={<PrivateRoute><Ruangan /></PrivateRoute>} />
+          <Route path="/master/satuan" element={<PrivateRoute><Satuan /></PrivateRoute>} />
+          <Route path="/master/supplier" element={<PrivateRoute><Supplier /></PrivateRoute>} />
+          <Route path="/master/barang" element={<PrivateRoute><MasterBarang /></PrivateRoute>} />
+          <Route path="/transaksi/pengadaan" element={<PrivateRoute><Pengadaan /></PrivateRoute>} />
+          <Route path="/transaksi/permintaan" element={<PrivateRoute><Permintaan /></PrivateRoute>} />
+          <Route path="/maintenance" element={<PrivateRoute><Maintenance /></PrivateRoute>} />
+          <Route path="/history/in" element={<PrivateRoute><TransIn /></PrivateRoute>} />
+          <Route path="/history/out" element={<PrivateRoute><TransOut /></PrivateRoute>} />
+          <Route path="/record/barang" element={<PrivateRoute><StokBarang /></PrivateRoute>} />
+          <Route path="/record/inventaris" element={<PrivateRoute><StokInventaris /></PrivateRoute>} />
           <Route path="/blank" element={<PrivateRoute><Blank /></PrivateRoute>} />
 
           <Route path="/forgot-password" element={<ForgotPassword />} />

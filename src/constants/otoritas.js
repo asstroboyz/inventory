@@ -1,9 +1,10 @@
 export const OTORITAS = {
   SUPER_ADMIN: 1,
-  ADMIN: 2,
-  TATA_USAHA: 3,
-  IPDS: 4,
-  PEGAWAI: 5
+  KEPALA_BPS: 2,
+  ADMIN: 3,
+  PETUGAS_PENGADAAN: 4,
+  STAF_TATA_USAHA: 5,
+  STAF: 6
 }
 
 export const getOtoritasName = (id) => {

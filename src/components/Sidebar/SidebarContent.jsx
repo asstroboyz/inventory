@@ -5,7 +5,6 @@ import { menus } from '../../constants/menus'
 import {
   HiChartPie,
   HiUserCircle,
-  HiIdentification,
   HiBeaker,
   HiChevronDown,
   HiUsers,
@@ -23,7 +22,9 @@ import {
   HiLogout,
   HiCollection,
   HiArchive,
-  HiPlus
+  HiPlus,
+  HiBriefcase,
+  HiHome
 } from 'react-icons/hi'
 
 function SidebarContent() {
@@ -37,6 +38,8 @@ function SidebarContent() {
     masterProduct: false,
     history: false,
     transaksi: false,
+    masterLokasi: false,
+    monitoringStok: false,
     development: false
   })
 
@@ -137,9 +140,20 @@ function SidebarContent() {
           onClick={() => toggleMenu('masterProduct')}
         >
           <SubMenuItem to="/master/barang" name="Barang" icon={<HiArchive className="w-4 h-4" />} />
-          <SubMenuItem to="/master/merk" name="Merk" icon={<HiTag className="w-4 h-4" />} />
-          <SubMenuItem to="/master/satuan" name="Satuan" icon={<HiCollection className="w-4 h-4" />} />
+          <SubMenuItem to="/master/jenis-barang" name="Jenis Barang" icon={<HiTag className="w-4 h-4" />} />
+          <SubMenuItem to="/master/merk" name="Merk" icon={<HiCollection className="w-4 h-4" />} />
+          <SubMenuItem to="/master/satuan" name="Satuan" icon={<HiCube className="w-4 h-4" />} />
           <SubMenuItem to="/master/supplier" name="Supplier" icon={<HiTruck className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- MASTER LOKASI --- */}
+        <DropdownMenuItem
+          name="Master Lokasi"
+          icon={<HiHome className="w-5 h-5" />}
+          isOpen={openMenus.masterLokasi}
+          onClick={() => toggleMenu('masterLokasi')}
+        >
+          <SubMenuItem to="/master/ruangan" name="Ruangan" icon={<HiOfficeBuilding className="w-4 h-4" />} />
         </DropdownMenuItem>
 
         {/* --- TRANSAKSI --- */}
@@ -149,8 +163,19 @@ function SidebarContent() {
           isOpen={openMenus.transaksi}
           onClick={() => toggleMenu('transaksi')}
         >
-          <SubMenuItem to="/transaksi/peminjaman" name="Peminjaman Alat" icon={<HiClipboardList className="w-4 h-4" />} />
+          <SubMenuItem to="/transaksi/permintaan" name="Permintaan Barang" icon={<HiClipboardList className="w-4 h-4" />} />
           <SubMenuItem to="/transaksi/pengadaan" name="Pengadaan Barang" icon={<HiPlus className="w-4 h-4" />} />
+        </DropdownMenuItem>
+
+        {/* --- MONITORING STOK --- */}
+        <DropdownMenuItem
+          name="Monitoring Stok"
+          icon={<HiCollection className="w-5 h-5" />}
+          isOpen={openMenus.monitoringStok}
+          onClick={() => toggleMenu('monitoringStok')}
+        >
+          <SubMenuItem to="/record/barang" name="Stok ATK" icon={<HiArchive className="w-4 h-4" />} />
+          <SubMenuItem to="/record/inventaris" name="Daftar Aset" icon={<HiBriefcase className="w-4 h-4" />} />
         </DropdownMenuItem>
 
         {/* --- PEMELIHARAAN (Asset Management) --- */}

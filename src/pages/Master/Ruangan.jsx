@@ -4,11 +4,8 @@ import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiPlus, HiPencil, HiTrash, HiSearch, HiOfficeBuilding, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi'
+import { HiPlus, HiPencil, HiTrash, HiSearch, HiHome, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi'
 
-/**
- * Premium Custom Table for Bagian
- */
 const CustomPremiumTable = ({
   loading,
   data,
@@ -26,14 +23,16 @@ const CustomPremiumTable = ({
           <thead>
             <tr className="text-xs font-bold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/50">
               <th className="px-6 py-4">No</th>
-              <th className="px-6 py-4">Nama Bagian</th>
+              <th className="px-6 py-4">Nama Ruangan</th>
+              <th className="px-6 py-4">Lantai</th>
+              <th className="px-6 py-4">Keterangan</th>
               <th className="px-6 py-4 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
             {loading ? (
               <tr>
-                <td colSpan="3" className="px-6 py-20 text-center">
+                <td colSpan="5" className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
@@ -42,8 +41,8 @@ const CustomPremiumTable = ({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan="3" className="px-6 py-20 text-center text-gray-500">
-                  Tidak ada data bagian.
+                <td colSpan="5" className="px-6 py-20 text-center text-gray-500">
+                  Tidak ada data ruangan.
                 </td>
               </tr>
             ) : (
@@ -51,7 +50,13 @@ const CustomPremiumTable = ({
                 <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
                   <td className="px-6 py-4 text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="px-6 py-4">
-                    <span className="font-bold text-gray-800 dark:text-gray-200">{row.nama}</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200">{row.nama_ruangan}</span>
+                  </td>
+                  <td className="px-6 py-4 text-xs">
+                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md font-semibold">Lantai {row.lantai || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-500 italic max-w-xs truncate">
+                    {row.keterangan || '-'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
@@ -95,7 +100,7 @@ const CustomPremiumTable = ({
   )
 }
 
-function Bagian() {
+function Ruangan() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -110,14 +115,16 @@ function Bagian() {
 
   const { register, handleSubmit, reset, setValue } = useForm({
     defaultValues: {
-      nama: ''
+      nama_ruangan: '',
+      lantai: '',
+      keterangan: ''
     }
   })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/bagian/cari`, {
+      const res = await fetch(`${BaseUrl}/api/master/ruangan/cari`, {
         method: 'POST',
         headers: UserHelper.jsonHeader(),
         body: JSON.stringify({
@@ -149,34 +156,37 @@ function Bagian() {
   const openModal = (item = null) => {
     if (item) {
       setEditingId(item.ID || item.id)
-      setValue('nama', item.nama)
+      setValue('nama_ruangan', item.nama_ruangan || '')
+      setValue('lantai', item.lantai || '')
+      setValue('keterangan', item.keterangan || '')
     } else {
       setEditingId(null)
-      reset({ nama: '' })
+      reset({ nama_ruangan: '', lantai: '', keterangan: '' })
     }
     setIsModalOpen(true)
   }
 
   const closeModal = () => {
     setIsModalOpen(false)
-    reset({ nama: '' })
+    reset({ nama_ruangan: '', lantai: '', keterangan: '' })
     setEditingId(null)
   }
 
   const onFormSubmit = async (formData) => {
     try {
-      const url = editingId ? `${BaseUrl}/api/bagian/${editingId}` : `${BaseUrl}/api/bagian/`
+      const url = `${BaseUrl}/api/master/ruangan/`
       const method = editingId ? 'PUT' : 'POST'
+      const payload = editingId ? { ...formData, id: editingId } : formData
 
       const res = await fetch(url, {
         method,
         headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
 
       const result = await res.json()
       if (res.ok) {
-        toast.success(editingId ? 'Bagian diperbarui!' : 'Bagian ditambah!')
+        toast.success(editingId ? 'Ruangan diperbarui!' : 'Ruangan ditambah!')
         closeModal()
         fetchData()
       } else {
@@ -188,14 +198,14 @@ function Bagian() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Yakin ingin menghapus bagian ini?')) return
+    if (!window.confirm('Yakin ingin menghapus ruangan ini?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/bagian/${id}`, {
+      const res = await fetch(`${BaseUrl}/api/master/ruangan/${id}`, {
         method: 'DELETE',
         headers: UserHelper.authHeader()
       })
       if (res.ok) {
-        toast.success('Bagian dihapus!')
+        toast.success('Ruangan dihapus!')
         fetchData()
       } else {
         const result = await res.json()
@@ -215,11 +225,11 @@ function Bagian() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                <HiOfficeBuilding className="text-purple-600 w-6 h-6" />
+                <HiHome className="text-purple-600 w-6 h-6" />
               </div>
-              Master Bagian
+              Master Ruangan
             </h2>
-            <p className="text-xs text-gray-500 mt-1 ml-11">Kelola data divisi atau unit kerja organisasi.</p>
+            <p className="text-xs text-gray-500 mt-1 ml-11">Kelola data lokasi dan ruangan penyimpanan aset.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -227,7 +237,7 @@ function Bagian() {
               <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Cari bagian..."
+                placeholder="Cari ruangan..."
                 className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl dark:text-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-all shadow-sm"
                 value={searchTerm}
                 onChange={(e) => {
@@ -241,7 +251,7 @@ function Bagian() {
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-purple-600 rounded-2xl hover:bg-purple-700 transition-all shadow-lg active:scale-95 whitespace-nowrap"
             >
               <HiPlus className="w-5 h-5" />
-              <span>Tambah Bagian</span>
+              <span>Tambah Ruangan</span>
             </button>
           </div>
         </div>
@@ -263,20 +273,36 @@ function Bagian() {
             <div className="w-full max-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-white/10">
               <header className="px-8 py-6 border-b dark:border-gray-700 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                  {editingId ? 'Edit Bagian' : 'Tambah Bagian Baru'}
+                  {editingId ? 'Edit Ruangan' : 'Tambah Ruangan Baru'}
                 </h3>
                 <button onClick={closeModal} className="p-2 hover:bg-red-500 hover:text-white rounded-full transition-all text-gray-400">
                   <HiX className="w-6 h-6" />
                 </button>
               </header>
               <form onSubmit={handleSubmit(onFormSubmit)}>
-                <div className="p-8">
+                <div className="p-8 space-y-4">
                   <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Nama Bagian</span>
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Nama Ruangan</span>
                     <input
-                      {...register('nama', { required: true })}
-                      placeholder="Masukkan nama unit..."
+                      {...register('nama_ruangan', { required: true })}
+                      placeholder="Contoh: Lab Komputer 1"
                       className="form-input mt-2"
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Lantai</span>
+                    <input
+                      {...register('lantai')}
+                      placeholder="Contoh: 2"
+                      className="form-input mt-2"
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Keterangan</span>
+                    <textarea
+                      {...register('keterangan')}
+                      placeholder="Catatan tambahan tentang ruangan..."
+                      className="form-input mt-2 h-24 resize-none"
                     />
                   </label>
                 </div>
@@ -295,5 +321,5 @@ function Bagian() {
   )
 }
 
-export default Bagian
+export default Ruangan
 

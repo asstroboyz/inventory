@@ -45,4 +45,11 @@ export const UserHelper = {
   authHeader: () => ({
     'Authorization': UserHelper.getToken() || ''
   }),
+
+  // Header with Auth + Content-Type JSON
+  jsonHeader: () => ({
+    'Content-Type': 'application/json',
+    ...UserHelper.authHeader()
+  }),
+
 }

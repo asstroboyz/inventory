@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useForm } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
@@ -8,15 +9,15 @@ import { HiPlus, HiPencil, HiTrash, HiSearch, HiShieldCheck, HiChevronLeft, HiCh
 /**
  * Premium Custom Table for Otoritas
  */
-const CustomPremiumTable = ({ 
-  loading, 
-  data, 
-  currentPage, 
-  itemsPerPage, 
-  totalPages, 
-  setCurrentPage, 
-  onEdit, 
-  onDelete 
+const CustomPremiumTable = ({
+  loading,
+  data,
+  currentPage,
+  itemsPerPage,
+  totalPages,
+  setCurrentPage,
+  onEdit,
+  onDelete
 }) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
@@ -31,20 +32,20 @@ const CustomPremiumTable = ({
           </thead>
           <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
             {loading ? (
-               <tr>
-                 <td colSpan="3" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                       <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                       <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
-                    </div>
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="3" className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
+                  </div>
+                </td>
+              </tr>
             ) : data.length === 0 ? (
-               <tr>
-                 <td colSpan="3" className="px-6 py-20 text-center text-gray-500">
-                    Tidak ada data otoritas.
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="3" className="px-6 py-20 text-center text-gray-500">
+                  Tidak ada data otoritas.
+                </td>
+              </tr>
             ) : (
               data.map((row, index) => (
                 <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
@@ -70,25 +71,25 @@ const CustomPremiumTable = ({
       </div>
 
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-         <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-            Halaman {currentPage} dari {totalPages || 1}
-         </span>
-         <div className="flex items-center gap-2">
-            <button 
-               disabled={currentPage === 1}
-               onClick={() => setCurrentPage(prev => prev - 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-               disabled={currentPage === totalPages || totalPages === 0}
-               onClick={() => setCurrentPage(prev => prev + 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronRight className="w-5 h-5" />
-            </button>
-         </div>
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+          Halaman {currentPage} dari {totalPages || 1}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -100,24 +101,36 @@ function Otoritas() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  
+
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [order] = useState("id desc")
 
-  const [formData, setFormData] = useState({
-    nama: '',
+  const { register, handleSubmit, reset, setValue } = useForm({
+    defaultValues: {
+      nama: ''
+    }
   })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/otoritas/`, {
-        headers: UserHelper.authHeader()
+      const res = await fetch(`${BaseUrl}/api/otoritas/cari`, {
+        method: 'POST',
+        headers: UserHelper.jsonHeader(),
+        body: JSON.stringify({
+          limit: itemsPerPage.toString(),
+          page: currentPage.toString(),
+          order: order,
+          search: searchTerm || null
+        })
       })
       const result = await res.json()
       if (res.ok) {
         setData(result.data || [])
+        setTotalItems(result.total || 0)
       } else {
         toast.error(result.message || 'Gagal mengambil data')
       }
@@ -126,45 +139,38 @@ function Otoritas() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, itemsPerPage, searchTerm, order])
+
 
   useEffect(() => {
-    fetchData()
+    Promise.resolve().then(() => fetchData())
   }, [fetchData])
-
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
 
   const openModal = (item = null) => {
     if (item) {
       setEditingId(item.ID || item.id)
-      setFormData({ nama: item.nama })
+      setValue('nama', item.nama)
     } else {
       setEditingId(null)
-      setFormData({ nama: '' })
+      reset({ nama: '' })
     }
     setIsModalOpen(true)
   }
 
   const closeModal = () => {
     setIsModalOpen(false)
-    setFormData({ nama: '' })
+    reset({ nama: '' })
     setEditingId(null)
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const onFormSubmit = async (formData) => {
     try {
       const url = editingId ? `${BaseUrl}/api/otoritas/${editingId}` : `${BaseUrl}/api/otoritas/`
       const method = editingId ? 'PUT' : 'POST'
-      
+
       const res = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...UserHelper.authHeader()
-        },
+        headers: UserHelper.jsonHeader(),
         body: JSON.stringify(formData)
       })
 
@@ -200,18 +206,7 @@ function Otoritas() {
     }
   }
 
-  const filteredData = useMemo(() => {
-    return data.filter(item => 
-      (item.nama || '').toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [data, searchTerm])
-
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredData.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredData, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   return (
     <Layout>
@@ -251,9 +246,9 @@ function Otoritas() {
           </div>
         </div>
 
-        <CustomPremiumTable 
+        <CustomPremiumTable
           loading={loading}
-          data={paginatedData}
+          data={data}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           totalPages={totalPages}
@@ -274,17 +269,14 @@ function Otoritas() {
                   <HiX className="w-6 h-6" />
                 </button>
               </header>
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit(onFormSubmit)}>
                 <div className="p-8">
                   <label className="block text-sm">
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Nama Role / Otoritas</span>
                     <input
-                      name="nama"
-                      required
+                      {...register('nama', { required: true })}
                       placeholder="Contoh: SUPER_ADMIN"
                       className="form-input mt-2"
-                      value={formData.nama}
-                      onChange={handleInputChange}
                     />
                   </label>
                 </div>
@@ -304,3 +296,4 @@ function Otoritas() {
 }
 
 export default Otoritas
+

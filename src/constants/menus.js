@@ -1,16 +1,38 @@
 export const menus = [
   { name: 'Dashboard', path: '/dashboard' },
+  { name: 'Profile Saya', path: '/profile' },
+  { name: 'Ubah Password', path: '/change-password' },
+  
+  // Master Pegawai
+  { name: 'Master Otoritas', path: '/master/otoritas' },
+  { name: 'Master Pegawai', path: '/master/pegawai' },
+  { name: 'Master Bagian', path: '/master/bagian' },
+  
+  // Master Product
+  { name: 'Master Barang', path: '/master/barang' },
+  { name: 'Master Jenis Barang', path: '/master/jenis-barang' },
+  { name: 'Master Merk', path: '/master/merk' },
+  { name: 'Master Satuan', path: '/master/satuan' },
+  { name: 'Master Supplier', path: '/master/supplier' },
+  
+  // Master Lokasi
+  { name: 'Master Ruangan', path: '/master/ruangan' },
+
+  // Monitoring Stok
+  { name: 'Stok ATK', path: '/record/barang' },
+  { name: 'Daftar Aset', path: '/record/inventaris' },
+  { name: 'Manajemen Aset', path: '/maintenance' },
+  { name: 'History Trans In', path: '/history/in' },
+  { name: 'History Trans Out', path: '/history/out' },
+
+  // Development
   { name: 'Forms', path: '/forms' },
   { name: 'Cards', path: '/cards' },
   { name: 'Charts', path: '/charts' },
   { name: 'Buttons', path: '/buttons' },
   { name: 'Modals', path: '/modals' },
   { name: 'Tables', path: '/tables' },
-  { name: 'Login', path: '/login' },
-  { name: 'Create Account', path: '/create-account' },
-  { name: 'Forgot Password', path: '/forgot-password' },
-  { name: 'Profile', path: '/profile' },
-  { name: 'Change Password', path: '/change-password' },
+  
   { name: '404', path: '/404' },
   { name: 'Blank', path: '/blank' },
 ]

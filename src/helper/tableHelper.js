@@ -38,3 +38,13 @@ export const handleTableSort = (column, sortDirection, setOrder, setOrderBy) => 
     setOrder(sortDirection);
     setOrderBy(field);
 };
+
+/**
+ * Standardizes the payload for FindByFilter (POST /cari) endpoints
+ */
+export const createCariPayload = (page, limit, order, search) => ({
+    limit: limit.toString(),
+    page: page.toString(),
+    order: order,
+    search: search || null
+});

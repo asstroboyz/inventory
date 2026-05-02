@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useForm, Controller } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
@@ -18,8 +19,17 @@ import {
   HiChevronLeft,
   HiChevronRight
 } from 'react-icons/hi'
+import { TbGenderMale, TbGenderFemale } from 'react-icons/tb'
 import Select from 'react-select'
 import { OTORITAS, getOtoritasName } from '../../constants/otoritas'
+
+/**
+ * Returns a default avatar path based on jenis_kelamin.
+ */
+const getDefaultAvatar = (user) => {
+  return user.jenis_kelamin === 'P' ? '/woman.png' : '/boy.png'
+}
+
 
 /**
  * Premium Custom Table Component
@@ -77,13 +87,14 @@ const CustomPremiumTable = ({
                         {row.berkas?.find(b => b.jenis === 'foto_profil') ? (
                           <img className="object-cover w-full h-full" src={`${BaseUrl}${row.berkas.find(b => b.jenis === 'foto_profil').path}`} alt="" loading="lazy" />
                         ) : (
-                          <div className="w-full h-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 font-bold uppercase text-xs">
-                            {row.nickname?.charAt(0)}
-                          </div>
+                          <img className="object-cover w-full h-full" src={getDefaultAvatar(row)} alt="" loading="lazy" />
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800 dark:text-gray-200 leading-tight">{row.nickname}</p>
+                        <div className="flex items-center gap-2">
+                           <p className="font-bold text-gray-800 dark:text-gray-200 leading-tight">{row.nickname}</p>
+                           {row.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-500 w-4 h-4" title="Laki-laki" /> : <TbGenderFemale className="text-pink-500 w-4 h-4" title="Perempuan" />}
+                        </div>
                         <p className="text-[10px] text-gray-500">{row.first_name} {row.last_name}</p>
                       </div>
                     </div>
@@ -97,12 +108,10 @@ const CustomPremiumTable = ({
                   </td>
                   <td className="px-6 py-4 text-xs">
                     <div className="flex flex-wrap gap-1">
-                      {row.list_otoritas && row.list_otoritas.length > 0 ? (
-                        row.list_otoritas.map((oto, i) => (
-                          <span key={i} className="px-2 py-1 font-bold leading-tight text-blue-700 bg-blue-50 border border-blue-100 rounded-lg dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
-                            {oto.nama}
+                      {row.otoritas ? (
+                          <span className="px-2 py-1 font-bold leading-tight text-blue-700 bg-blue-50 border border-blue-100 rounded-lg dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
+                            {row.otoritas.nama}
                           </span>
-                        ))
                       ) : (
                         <span className="px-2 py-1 font-bold leading-tight text-gray-400 bg-gray-50 border border-gray-100 rounded-lg dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700">
                           No Role
@@ -185,7 +194,9 @@ function Pegawai() {
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [order] = useState("id desc")
 
   // Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
@@ -194,25 +205,36 @@ function Pegawai() {
   const [selectedPegawai, setSelectedPegawai] = useState(null)
   const [previewFile, setPreviewFile] = useState(null)
 
-  const [formData, setFormData] = useState({
-    nickname: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    status: 'active',
-    otoritas_id: '',
+  const { register, handleSubmit, reset, setValue, control } = useForm({
+    defaultValues: {
+      nickname: '',
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      status: 'active',
+      otoritas_id: '',
+      jenis_kelamin: 'L'
+    }
   })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/user/`, {
-        headers: UserHelper.authHeader()
+      const res = await fetch(`${BaseUrl}/api/user/cari`, {
+        method: 'POST',
+        headers: UserHelper.jsonHeader(),
+        body: JSON.stringify({
+          limit: itemsPerPage.toString(),
+          page: currentPage.toString(),
+          order: order,
+          search: searchTerm || null
+        })
       })
       const result = await res.json()
       if (res.ok) {
         setData(result.data || [])
+        setTotalItems(result.total || 0)
       } else {
         toast.error(result.message || 'Gagal mengambil data pegawai')
       }
@@ -221,20 +243,17 @@ function Pegawai() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, itemsPerPage, searchTerm, order])
+
 
   useEffect(() => {
-    fetchData()
+    Promise.resolve().then(() => fetchData())
   }, [fetchData])
-
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
 
   const openFormModal = (item = null) => {
     if (item) {
       setEditingId(item.ID || item.id)
-      setFormData({
+      reset({
         nickname: item.nickname || '',
         first_name: item.first_name || '',
         last_name: item.last_name || '',
@@ -242,10 +261,11 @@ function Pegawai() {
         phone: item.phone || '',
         status: item.status || 'active',
         otoritas_id: item.otoritas_id || '',
+        jenis_kelamin: item.jenis_kelamin || 'L'
       })
     } else {
       setEditingId(null)
-      setFormData({
+      reset({
         nickname: '',
         first_name: '',
         last_name: '',
@@ -253,6 +273,7 @@ function Pegawai() {
         phone: '',
         status: 'active',
         otoritas_id: '',
+        jenis_kelamin: 'L'
       })
     }
     setIsFormModalOpen(true)
@@ -261,20 +282,26 @@ function Pegawai() {
   const closeFormModal = () => {
     setIsFormModalOpen(false)
     setEditingId(null)
+    reset({
+      nickname: '',
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      status: 'active',
+      otoritas_id: '',
+      jenis_kelamin: 'L'
+    })
   }
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault()
+  const handleFormSubmit = async (formData) => {
     try {
       const url = editingId ? `${BaseUrl}/api/user/${editingId}` : `${BaseUrl}/api/user/`
       const method = editingId ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...UserHelper.authHeader()
-        },
+        headers: UserHelper.jsonHeader(),
         body: JSON.stringify(formData)
       })
 
@@ -317,10 +344,7 @@ function Pegawai() {
     try {
       const res = await fetch(`${BaseUrl}/api/user/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...UserHelper.authHeader()
-        },
+        headers: UserHelper.jsonHeader(),
         body: JSON.stringify({
           status: newStatus
         })
@@ -338,21 +362,27 @@ function Pegawai() {
     }
   }
 
-  // Filter & Pagination Logic
-  const filteredData = useMemo(() => {
-    return data.filter(item =>
-      (item.nickname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [data, searchTerm])
+  const handleDeleteBerkas = async (berkasID) => {
+    if (!window.confirm('Yakin ingin menghapus berkas ini secara permanen?')) return
+    try {
+      const res = await fetch(`${BaseUrl}/api/berkas/${berkasID}`, {
+        method: 'DELETE',
+        headers: UserHelper.authHeader()
+      })
+      const result = await res.json()
+      if (res.ok) {
+        toast.success('Berkas berhasil dihapus!')
+        setSelectedPegawai(result.data) // Update state modal
+        fetchData() // Update state table
+      } else {
+        toast.error(result.message || 'Gagal menghapus berkas')
+      }
+    } catch {
+      toast.error('Kesalahan koneksi saat menghapus berkas')
+    }
+  }
 
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredData.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredData, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   const selectStyles = {
     control: (base, state) => ({
@@ -388,7 +418,7 @@ function Pegawai() {
     { value: 'inactive', label: 'Inactive' }
   ]
 
-  const otoritasOptions = Object.entries(OTORITAS).map(([_, value]) => ({
+  const otoritasOptions = Object.values(OTORITAS).map((value) => ({
     value,
     label: getOtoritasName(value)
   }))
@@ -435,7 +465,7 @@ function Pegawai() {
         {/* Custom Premium Table */}
         <CustomPremiumTable
           loading={loading}
-          data={paginatedData}
+          data={data}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           totalPages={totalPages}
@@ -445,6 +475,7 @@ function Pegawai() {
           onEdit={openFormModal}
           onDelete={handleDelete}
         />
+
 
         {/* --- MODAL DETAIL (Glassmorphism Style) --- */}
         {isDetailModalOpen && selectedPegawai && (
@@ -456,11 +487,19 @@ function Pegawai() {
                   {selectedPegawai.berkas?.find(b => b.jenis === 'foto_profil') ? (
                     <img src={`${BaseUrl}${selectedPegawai.berkas.find(b => b.jenis === 'foto_profil').path}`} className="w-full h-full object-cover rounded-[20px]" alt="" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl font-black">{selectedPegawai.nickname?.charAt(0)}</div>
+                    <img src={getDefaultAvatar(selectedPegawai)} className="w-full h-full object-cover rounded-[20px]" alt="" />
                   )}
                 </div>
                 <h3 className="text-2xl font-bold text-center z-10">{selectedPegawai.nickname}</h3>
-                <p className="text-purple-200 text-sm mb-6 z-10">{selectedPegawai.email}</p>
+                <p className="text-purple-200 text-sm mb-2 z-10">{selectedPegawai.email}</p>
+                <p className="text-purple-300 text-xs z-10">{selectedPegawai.first_name} {selectedPegawai.last_name}</p>
+                <div className="z-10 flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm mt-2">
+                   {selectedPegawai.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-300" /> : <TbGenderFemale className="text-pink-300" />}
+                   {selectedPegawai.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
+                </div>
+                <div className="z-10 flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm mt-2">
+                   {selectedPegawai.otoritas?.nama || 'No Role'}
+                </div>
               </div>
 
               <div className="flex-1 p-8 overflow-y-auto no-scrollbar bg-white/50 dark:bg-gray-900/50 relative">
@@ -487,12 +526,15 @@ function Pegawai() {
                                 <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">{doc.nama || `Berkas ${jenis}`}</span>
                               </div>
                               <div className="flex gap-2">
-                                <button onClick={() => setPreviewFile({ url: `${BaseUrl}${doc.path}`, title: doc.nama || jenis })} className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white transition-all">
+                                <button onClick={() => setPreviewFile({ url: `${BaseUrl}${doc.path}`, title: doc.nama || jenis })} className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white transition-all" title="Preview">
                                   <HiEye className="w-4 h-4" />
                                 </button>
-                                <a href={`${BaseUrl}${doc.path}`} download className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-800 hover:text-white transition-all">
+                                <a href={`${BaseUrl}${doc.path}`} download className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-800 hover:text-white transition-all" title="Download">
                                   <HiDownload className="w-4 h-4" />
                                 </a>
+                                <button onClick={() => handleDeleteBerkas(doc.ID || doc.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Hapus Berkas">
+                                  <HiTrash className="w-4 h-4" />
+                                </button>
                               </div>
                             </div>
                           ))
@@ -521,49 +563,94 @@ function Pegawai() {
                   <HiX className="w-6 h-6" />
                 </button>
               </header>
-              <form onSubmit={handleFormSubmit}>
+              <form onSubmit={handleSubmit(handleFormSubmit)}>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto no-scrollbar">
                   <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold">Nickname</span>
-                    <input name="nickname" required className="form-input mt-2" value={formData.nickname} onChange={handleInputChange} />
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nickname</span>
+                    <input {...register('nickname', { required: true })} className="form-input mt-2" />
                   </label>
                   <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold">Status</span>
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Status Akun</span>
                     <div className="mt-2">
-                      <Select
-                        options={statusOptions}
-                        styles={selectStyles}
-                        menuPortalTarget={document.body}
-                        value={statusOptions.find(opt => opt.value === formData.status)}
-                        onChange={(opt) => setFormData({ ...formData, status: opt ? opt.value : '' })}
+                      <Controller
+                        name="status"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            {...field}
+                            options={statusOptions}
+                            styles={selectStyles}
+                            menuPortalTarget={document.body}
+                            value={statusOptions.find(opt => opt.value === field.value)}
+                            onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                          />
+                        )}
                       />
                     </div>
                   </label>
                   <label className="block text-sm md:col-span-2">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold">Otoritas / Role</span>
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Otoritas / Role</span>
                     <div className="mt-2">
-                      <Select
-                        options={otoritasOptions}
-                        styles={selectStyles}
-                        menuPortalTarget={document.body}
-                        value={otoritasOptions.find(opt => opt.value === formData.otoritas_id)}
-                        onChange={(opt) => setFormData({ ...formData, otoritas_id: opt ? opt.value : '' })}
+                      <Controller
+                        name="otoritas_id"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            {...field}
+                            options={otoritasOptions}
+                            styles={selectStyles}
+                            menuPortalTarget={document.body}
+                            value={otoritasOptions.find(opt => opt.value === field.value)}
+                            onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                          />
+                        )}
                       />
                     </div>
                   </label>
+
+                  <div className="md:col-span-2">
+                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Jenis Kelamin</span>
+                     <div className="flex gap-4 mt-3">
+                        <label className="flex-1 cursor-pointer group">
+                           <input 
+                              type="radio" 
+                              {...register('jenis_kelamin')}
+                              value="L" 
+                              className="hidden peer" 
+                           />
+                           <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <TbGenderMale className="text-blue-500 w-5 h-5" />
+                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-blue-600">Laki-laki</span>
+                           </div>
+                        </label>
+                        <label className="flex-1 cursor-pointer group">
+                           <input 
+                              type="radio" 
+                              {...register('jenis_kelamin')}
+                              value="P" 
+                              className="hidden peer" 
+                           />
+                           <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-pink-500 peer-checked:bg-pink-50 dark:peer-checked:bg-pink-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <TbGenderFemale className="text-pink-500 w-5 h-5" />
+                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-pink-600">Perempuan</span>
+                           </div>
+                        </label>
+                     </div>
+                  </div>
+
                   <label className="block text-sm md:col-span-2">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold">Email</span>
-                    <input name="email" type="email" required className="form-input mt-2" value={formData.email} onChange={handleInputChange} />
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Email Resmi</span>
+                    <input {...register('email', { required: true })} type="email" className="form-input mt-2" />
                   </label>
                   <label className="block text-sm md:col-span-2">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold">Telepon</span>
-                    <input name="phone" className="form-input mt-2" value={formData.phone} onChange={handleInputChange} />
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nomor Telepon/WA</span>
+                    <input {...register('phone')} className="form-input mt-2" />
                   </label>
                 </div>
                 <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 flex justify-end space-x-3 border-t dark:border-gray-700">
                   <button type="button" onClick={closeFormModal} className="px-6 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all">Batal</button>
                   <button type="submit" className="px-10 py-2.5 text-sm font-bold text-white bg-purple-600 rounded-xl hover:bg-purple-700 shadow-lg active:scale-95 transition-all">
-                    {editingId ? 'Simpan' : 'Daftarkan'}
+                    {editingId ? 'Simpan Perubahan' : 'Daftarkan Pegawai'}
                   </button>
                 </footer>
               </form>
@@ -593,3 +680,4 @@ function Pegawai() {
 }
 
 export default Pegawai
+
