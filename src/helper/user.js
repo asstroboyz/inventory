@@ -51,5 +51,9 @@ export const UserHelper = {
     'Content-Type': 'application/json',
     ...UserHelper.authHeader()
   }),
+  // Axios Config helper
+  axiosConfig: () => ({
+    headers: UserHelper.jsonHeader()
+  }),
 
 }

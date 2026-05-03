@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 import { useForm, Controller } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
@@ -92,8 +93,8 @@ const CustomPremiumTable = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                           <p className="font-bold text-gray-800 dark:text-gray-200 leading-tight">{row.nickname}</p>
-                           {row.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-500 w-4 h-4" title="Laki-laki" /> : <TbGenderFemale className="text-pink-500 w-4 h-4" title="Perempuan" />}
+                          <p className="font-bold text-gray-800 dark:text-gray-200 leading-tight">{row.nickname}</p>
+                          {row.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-500 w-4 h-4" title="Laki-laki" /> : <TbGenderFemale className="text-pink-500 w-4 h-4" title="Perempuan" />}
                         </div>
                         <p className="text-[10px] text-gray-500">{row.first_name} {row.last_name}</p>
                       </div>
@@ -109,9 +110,9 @@ const CustomPremiumTable = ({
                   <td className="px-6 py-4 text-xs">
                     <div className="flex flex-wrap gap-1">
                       {row.otoritas ? (
-                          <span className="px-2 py-1 font-bold leading-tight text-blue-700 bg-blue-50 border border-blue-100 rounded-lg dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
-                            {row.otoritas.nama}
-                          </span>
+                        <span className="px-2 py-1 font-bold leading-tight text-blue-700 bg-blue-50 border border-blue-100 rounded-lg dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
+                          {row.otoritas.nama}
+                        </span>
                       ) : (
                         <span className="px-2 py-1 font-bold leading-tight text-gray-400 bg-gray-50 border border-gray-100 rounded-lg dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700">
                           No Role
@@ -197,6 +198,7 @@ function Pegawai() {
   const [itemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
+  const [config] = useState(() => UserHelper.axiosConfig())
 
   // Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
@@ -204,8 +206,9 @@ function Pegawai() {
   const [editingId, setEditingId] = useState(null)
   const [selectedPegawai, setSelectedPegawai] = useState(null)
   const [previewFile, setPreviewFile] = useState(null)
+  const [bagianOptions, setBagianOptions] = useState([])
 
-  const { register, handleSubmit, reset, setValue, control } = useForm({
+  const { handleSubmit, reset, control } = useForm({
     defaultValues: {
       nickname: '',
       first_name: '',
@@ -214,41 +217,59 @@ function Pegawai() {
       phone: '',
       status: 'active',
       otoritas_id: '',
-      jenis_kelamin: 'L'
+      bagian_id: '',
+      jenis_kelamin: 'L',
+      tanggal_lahir: ''
     }
   })
 
-  const fetchData = useCallback(async () => {
+  // --- Data Fetching ---
+  const fetchData = useCallback(async (searchVal = searchTerm) => {
+    if (!config) return
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/user/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({
-          limit: itemsPerPage.toString(),
-          page: currentPage.toString(),
-          order: order,
-          search: searchTerm || null
-        })
-      })
-      const result = await res.json()
-      if (res.ok) {
-        setData(result.data || [])
-        setTotalItems(result.total || 0)
-      } else {
-        toast.error(result.message || 'Gagal mengambil data pegawai')
-      }
-    } catch {
-      toast.error('Koneksi ke server terputus')
+      const { data } = await axios.post(`${BaseUrl}/api/user/cari`, {
+        "Search": searchVal || null,
+        "Limit": String(itemsPerPage),
+        "Page": String(currentPage),
+        "Order": order
+      }, config)
+
+      setData(data.data || [])
+      setTotalItems(data.total || 0)
+    } catch (error) {
+      console.error(error)
+      toast.error('Gagal mengambil data pegawai')
     } finally {
       setLoading(false)
     }
-  }, [currentPage, itemsPerPage, searchTerm, order])
-
+  }, [config, itemsPerPage, currentPage, order])
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchData())
-  }, [fetchData])
+    const delayDebounceFn = setTimeout(() => {
+      fetchData(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, fetchData])
+
+  // Fetch Bagian Options
+  useEffect(() => {
+    const fetchBagian = async () => {
+      try {
+        const { data } = await axios.get(`${BaseUrl}/api/bagian/`, config)
+        if (data.data) {
+          const options = data.data.map(item => ({
+            value: item.id || item.ID,
+            label: item.nama || item.Nama
+          }))
+          setBagianOptions(options)
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data bagian", error)
+      }
+    }
+    if (config) fetchBagian()
+  }, [config])
 
   const openFormModal = (item = null) => {
     if (item) {
@@ -261,7 +282,9 @@ function Pegawai() {
         phone: item.phone || '',
         status: item.status || 'active',
         otoritas_id: item.otoritas_id || '',
-        jenis_kelamin: item.jenis_kelamin || 'L'
+        bagian_id: item.bagian_id || '',
+        jenis_kelamin: item.jenis_kelamin || 'L',
+        tanggal_lahir: item.tanggal_lahir ? item.tanggal_lahir.split('T')[0] : ''
       })
     } else {
       setEditingId(null)
@@ -273,7 +296,9 @@ function Pegawai() {
         phone: '',
         status: 'active',
         otoritas_id: '',
-        jenis_kelamin: 'L'
+        bagian_id: '',
+        jenis_kelamin: 'L',
+        tanggal_lahir: ''
       })
     }
     setIsFormModalOpen(true)
@@ -290,50 +315,85 @@ function Pegawai() {
       phone: '',
       status: 'active',
       otoritas_id: '',
-      jenis_kelamin: 'L'
+      bagian_id: '',
+      jenis_kelamin: 'L',
+      tanggal_lahir: ''
     })
   }
 
-  const handleFormSubmit = async (formData) => {
+  const insertData = async (formData) => {
     try {
-      const url = editingId ? `${BaseUrl}/api/user/${editingId}` : `${BaseUrl}/api/user/`
-      const method = editingId ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(formData)
-      })
-
-      const result = await res.json()
-      if (res.ok) {
-        toast.success(editingId ? 'Data pegawai diperbarui!' : 'Pegawai baru terdaftar!')
+      const res = await axios.post(`${BaseUrl}/api/user/`, formData, config)
+      if (res.status === 200 || res.status === 201) {
+        toast.success('Pegawai baru terdaftar!')
         closeFormModal()
         fetchData()
       } else {
-        toast.error(result.message || 'Gagal menyimpan data')
+        toast.error(res.data?.message || 'Gagal menambahkan pegawai')
       }
-    } catch {
-      toast.error('Terjadi kesalahan sistem')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem saat menambah')
+    }
+  }
+
+  const updateData = async (formData) => {
+    try {
+      const res = await axios.put(`${BaseUrl}/api/user/${editingId}`, formData, config)
+      if (res.status === 200 || res.status === 201) {
+        toast.success('Data pegawai diperbarui!')
+        closeFormModal()
+        fetchData()
+      } else {
+        toast.error(res.data?.message || 'Gagal memperbarui data')
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem saat update')
+    }
+  }
+
+  const handleFormSubmit = (formData) => {
+    const payload = { ...formData }
+
+    if (payload.otoritas_id) {
+      payload.otoritas_id = Number(payload.otoritas_id)
+    } else {
+      payload.otoritas_id = null
+    }
+
+    if (payload.bagian_id) {
+      payload.bagian_id = Number(payload.bagian_id)
+    } else {
+      payload.bagian_id = null
+    }
+
+    if (!payload.phone) payload.phone = null
+
+    payload.first_name = payload.first_name || ""
+    payload.last_name = payload.last_name || ""
+    payload.tanggal_lahir = payload.tanggal_lahir || ""
+
+    if (editingId) {
+      updateData(payload)
+    } else {
+      insertData(payload)
     }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus pegawai ini?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/user/${id}`, {
-        method: 'DELETE',
-        headers: UserHelper.authHeader()
-      })
-      if (res.ok) {
+      const res = await axios.delete(`${BaseUrl}/api/user/${id}`, config)
+      if (res.status === 200) {
         toast.success('Pegawai berhasil dihapus!')
         fetchData()
       } else {
-        const result = await res.json()
-        toast.error(result.message || 'Gagal menghapus')
+        toast.error(res.data?.message || 'Gagal menghapus')
       }
-    } catch {
-      toast.error('Kesalahan koneksi')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi')
     }
   }
 
@@ -342,43 +402,34 @@ function Pegawai() {
     const id = pegawai.ID || pegawai.id
 
     try {
-      const res = await fetch(`${BaseUrl}/api/user/${id}`, {
-        method: 'PUT',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({
-          status: newStatus
-        })
-      })
+      const res = await axios.put(`${BaseUrl}/api/user/${id}`, { status: newStatus }, config)
 
-      if (res.ok) {
+      if (res.status === 200) {
         toast.success(`Pegawai berhasil di-${newStatus === 'active' ? 'aktifkan' : 'nonaktifkan'}`)
         fetchData()
       } else {
-        const result = await res.json()
-        toast.error(result.message || 'Gagal mengubah status')
+        toast.error(res.data?.message || 'Gagal mengubah status')
       }
-    } catch {
-      toast.error('Kesalahan koneksi')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi')
     }
   }
 
   const handleDeleteBerkas = async (berkasID) => {
     if (!window.confirm('Yakin ingin menghapus berkas ini secara permanen?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/berkas/${berkasID}`, {
-        method: 'DELETE',
-        headers: UserHelper.authHeader()
-      })
-      const result = await res.json()
-      if (res.ok) {
+      const res = await axios.delete(`${BaseUrl}/api/berkas/${berkasID}`, config)
+      if (res.status === 200) {
         toast.success('Berkas berhasil dihapus!')
-        setSelectedPegawai(result.data) // Update state modal
+        setSelectedPegawai(res.data.data) // Update state modal
         fetchData() // Update state table
       } else {
-        toast.error(result.message || 'Gagal menghapus berkas')
+        toast.error(res.data?.message || 'Gagal menghapus berkas')
       }
-    } catch {
-      toast.error('Kesalahan koneksi saat menghapus berkas')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi saat menghapus berkas')
     }
   }
 
@@ -494,11 +545,11 @@ function Pegawai() {
                 <p className="text-purple-200 text-sm mb-2 z-10">{selectedPegawai.email}</p>
                 <p className="text-purple-300 text-xs z-10">{selectedPegawai.first_name} {selectedPegawai.last_name}</p>
                 <div className="z-10 flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm mt-2">
-                   {selectedPegawai.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-300" /> : <TbGenderFemale className="text-pink-300" />}
-                   {selectedPegawai.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
+                  {selectedPegawai.jenis_kelamin === 'L' ? <TbGenderMale className="text-blue-300" /> : <TbGenderFemale className="text-pink-300" />}
+                  {selectedPegawai.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
                 </div>
                 <div className="z-10 flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm mt-2">
-                   {selectedPegawai.otoritas?.nama || 'No Role'}
+                  {selectedPegawai.otoritas?.nama || 'No Role'}
                 </div>
               </div>
 
@@ -567,7 +618,21 @@ function Pegawai() {
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto no-scrollbar">
                   <label className="block text-sm">
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nickname</span>
-                    <input {...register('nickname', { required: true })} className="form-input mt-2" />
+                    <Controller
+                      name="nickname"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <input
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                          className="form-input mt-2"
+                        />
+                      )}
+                    />
                   </label>
                   <label className="block text-sm">
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Status Akun</span>
@@ -577,7 +642,9 @@ function Pegawai() {
                         control={control}
                         render={({ field }) => (
                           <Select
-                            {...field}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
                             options={statusOptions}
                             styles={selectStyles}
                             menuPortalTarget={document.body}
@@ -596,7 +663,9 @@ function Pegawai() {
                         control={control}
                         render={({ field }) => (
                           <Select
-                            {...field}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
                             options={otoritasOptions}
                             styles={selectStyles}
                             menuPortalTarget={document.body}
@@ -607,44 +676,108 @@ function Pegawai() {
                       />
                     </div>
                   </label>
+                  <label className="block text-sm md:col-span-2">
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Bagian / Unit Kerja</span>
+                    <div className="mt-2">
+                      <Controller
+                        name="bagian_id"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                            options={bagianOptions}
+                            styles={selectStyles}
+                            menuPortalTarget={document.body}
+                            value={bagianOptions.find(opt => opt.value === field.value)}
+                            onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                            placeholder="Pilih Bagian..."
+                            isClearable
+                          />
+                        )}
+                      />
+                    </div>
+                  </label>
 
                   <div className="md:col-span-2">
-                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Jenis Kelamin</span>
-                     <div className="flex gap-4 mt-3">
-                        <label className="flex-1 cursor-pointer group">
-                           <input 
-                              type="radio" 
-                              {...register('jenis_kelamin')}
-                              value="L" 
-                              className="hidden peer" 
-                           />
-                           <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                              <TbGenderMale className="text-blue-500 w-5 h-5" />
-                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-blue-600">Laki-laki</span>
-                           </div>
-                        </label>
-                        <label className="flex-1 cursor-pointer group">
-                           <input 
-                              type="radio" 
-                              {...register('jenis_kelamin')}
-                              value="P" 
-                              className="hidden peer" 
-                           />
-                           <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-pink-500 peer-checked:bg-pink-50 dark:peer-checked:bg-pink-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                              <TbGenderFemale className="text-pink-500 w-5 h-5" />
-                              <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-pink-600">Perempuan</span>
-                           </div>
-                        </label>
-                     </div>
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Jenis Kelamin</span>
+                    <div className="flex gap-4 mt-3">
+                      <Controller
+                        name="jenis_kelamin"
+                        control={control}
+                        render={({ field }) => (
+                          <>
+                            <label className="flex-1 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name={field.name}
+                                value="L"
+                                checked={field.value === 'L'}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                ref={field.ref}
+                                className="hidden peer"
+                              />
+                              <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <TbGenderMale className="text-blue-500 w-5 h-5" />
+                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-blue-600">Laki-laki</span>
+                              </div>
+                            </label>
+                            <label className="flex-1 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name={field.name}
+                                value="P"
+                                checked={field.value === 'P'}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                ref={field.ref}
+                                className="hidden peer"
+                              />
+                              <div className="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 peer-checked:border-pink-500 peer-checked:bg-pink-50 dark:peer-checked:bg-pink-900/20 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <TbGenderFemale className="text-pink-500 w-5 h-5" />
+                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400 peer-checked:text-pink-600">Perempuan</span>
+                              </div>
+                            </label>
+                          </>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   <label className="block text-sm md:col-span-2">
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Email Resmi</span>
-                    <input {...register('email', { required: true })} type="email" className="form-input mt-2" />
+                    <Controller
+                      name="email"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <input type="email" name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} ref={field.ref} className="form-input mt-2" />
+                      )}
+                    />
+                  </label>
+                  <label className="block text-sm md:col-span-2">
+                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Tanggal Lahir</span>
+                    <Controller
+                      name="tanggal_lahir"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <input type="date" name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} ref={field.ref} className="form-input mt-2" />
+                      )}
+                    />
+                    <span className="text-[10px] text-gray-500 mt-1 block">*Digunakan sebagai password default (Format: YYYYMMDD) jika ini pegawai baru</span>
                   </label>
                   <label className="block text-sm md:col-span-2">
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nomor Telepon/WA</span>
-                    <input {...register('phone')} className="form-input mt-2" />
+                    <Controller
+                      name="phone"
+                      control={control}
+                      render={({ field }) => (
+                        <input name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} ref={field.ref} className="form-input mt-2" />
+                      )}
+                    />
                   </label>
                 </div>
                 <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 flex justify-end space-x-3 border-t dark:border-gray-700">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
@@ -9,15 +10,15 @@ import { HiPlus, HiPencil, HiTrash, HiSearch, HiBriefcase, HiChevronLeft, HiChev
 /**
  * Premium Custom Table for Merk
  */
-const CustomPremiumTable = ({ 
-  loading, 
-  data, 
-  currentPage, 
-  itemsPerPage, 
-  totalPages, 
-  setCurrentPage, 
-  onEdit, 
-  onDelete 
+const CustomPremiumTable = ({
+  loading,
+  data,
+  currentPage,
+  itemsPerPage,
+  totalPages,
+  setCurrentPage,
+  onEdit,
+  onDelete
 }) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
@@ -33,20 +34,20 @@ const CustomPremiumTable = ({
           </thead>
           <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
             {loading ? (
-               <tr>
-                 <td colSpan="4" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                       <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                       <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
-                    </div>
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="4" className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
+                  </div>
+                </td>
+              </tr>
             ) : data.length === 0 ? (
-               <tr>
-                 <td colSpan="4" className="px-6 py-20 text-center text-gray-500">
-                    Tidak ada data merk.
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="4" className="px-6 py-20 text-center text-gray-500">
+                  Tidak ada data merk.
+                </td>
+              </tr>
             ) : (
               data.map((row, index) => (
                 <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
@@ -75,25 +76,25 @@ const CustomPremiumTable = ({
       </div>
 
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-         <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-            Halaman {currentPage} dari {totalPages || 1}
-         </span>
-         <div className="flex items-center gap-2">
-            <button 
-               disabled={currentPage === 1}
-               onClick={() => setCurrentPage(prev => prev - 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-               disabled={currentPage === totalPages || totalPages === 0}
-               onClick={() => setCurrentPage(prev => prev + 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronRight className="w-5 h-5" />
-            </button>
-         </div>
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+          Halaman {currentPage} dari {totalPages || 1}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -105,12 +106,13 @@ function Merk() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  
+
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
+  const [config] = useState(() => UserHelper.axiosConfig())
 
   const { register, handleSubmit, reset, setValue } = useForm({
     defaultValues: {
@@ -118,37 +120,33 @@ function Merk() {
     }
   })
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (searchVal = searchTerm) => {
+    if (!config) return
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/master/merk/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({
-          limit: itemsPerPage.toString(),
-          page: currentPage.toString(),
-          order: order,
-          search: searchTerm || null
-        })
-      })
-      const result = await res.json()
-      if (res.ok) {
-        setData(result.data || [])
-        setTotalItems(result.total || 0)
-      } else {
-        toast.error(result.message || 'Gagal mengambil data')
-      }
-    } catch {
-      toast.error('Koneksi ke server terputus')
+      const { data } = await axios.post(`${BaseUrl}/api/master/merk/cari`, {
+        Search: searchVal || null,
+        Limit: String(itemsPerPage),
+        Page: String(currentPage),
+        Order: order
+      }, config)
+
+      setData(data.data || [])
+      setTotalItems(data.total || 0)
+    } catch (error) {
+      console.error(error)
+      toast.error('Gagal mengambil data')
     } finally {
       setLoading(false)
     }
-  }, [currentPage, itemsPerPage, searchTerm, order])
-
+  }, [config, itemsPerPage, currentPage, order])
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchData())
-  }, [fetchData])
+    const delayDebounceFn = setTimeout(() => {
+      fetchData(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, fetchData])
 
   const openModal = (item = null) => {
     if (item) {
@@ -170,44 +168,38 @@ function Merk() {
   const onFormSubmit = async (formData) => {
     try {
       const url = `${BaseUrl}/api/master/merk/`
-      const method = editingId ? 'PUT' : 'POST'
       const payload = editingId ? { ...formData, id: editingId } : formData
 
-      const res = await fetch(url, {
-        method,
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(payload)
-      })
+      const res = editingId
+        ? await axios.put(url, payload, config)
+        : await axios.post(url, payload, config)
 
-      const result = await res.json()
-      if (res.ok) {
+      if (res.status === 200 || res.status === 201) {
         toast.success(editingId ? 'Merk diperbarui!' : 'Merk ditambah!')
         closeModal()
         fetchData()
       } else {
-        toast.error(result.message || 'Gagal menyimpan data')
+        toast.error(res.data?.message || 'Gagal menyimpan data')
       }
-    } catch {
-      toast.error('Terjadi kesalahan sistem')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem')
     }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus merk ini?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/master/merk/${id}`, {
-        method: 'DELETE',
-        headers: UserHelper.authHeader()
-      })
-      if (res.ok) {
+      const res = await axios.delete(`${BaseUrl}/api/master/merk/${id}`, config)
+      if (res.status === 200) {
         toast.success('Merk dihapus!')
         fetchData()
       } else {
-        const result = await res.json()
-        toast.error(result.message || 'Gagal menghapus')
+        toast.error(res.data?.message || 'Gagal menghapus')
       }
-    } catch {
-      toast.error('Kesalahan koneksi')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi')
     }
   }
 
@@ -251,7 +243,7 @@ function Merk() {
           </div>
         </div>
 
-        <CustomPremiumTable 
+        <CustomPremiumTable
           loading={loading}
           data={data}
           currentPage={currentPage}

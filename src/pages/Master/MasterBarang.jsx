@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 import { useForm, Controller } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
@@ -115,12 +116,13 @@ function MasterBarang() {
   const [editingId, setEditingId] = useState(null)
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
+  const [config] = useState(() => UserHelper.axiosConfig())
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
-  const { register, handleSubmit, reset, setValue, control } = useForm({
+  const { register, handleSubmit, reset, control } = useForm({
     defaultValues: {
       nama_brg: '',
       kode_brg: '',
@@ -129,57 +131,54 @@ function MasterBarang() {
     }
   })
 
-  const loadJenis = async (inputValue, callback) => {
+  const loadJenis = useCallback(async (inputValue, callback) => {
+    if (!config) return
     try {
-      const res = await fetch(`${BaseUrl}/api/master/jenis-barang/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(createCariPayload(1, 50, "nama_jenis asc", inputValue))
-      })
-      const result = await res.json()
-      if (res.ok) callback(result.data?.map(j => ({ label: j.nama_jenis, value: j.ID })) || [])
+      const { data } = await axios.post(`${BaseUrl}/api/master/jenis-barang/cari`, 
+        createCariPayload(1, 50, "nama_jenis asc", inputValue), 
+        config
+      )
+      callback(data.data?.map(j => ({ label: j.nama_jenis, value: j.ID })) || [])
     } catch (e) { console.error(e) }
-  }
+  }, [config])
 
-  const loadMerk = async (inputValue, callback) => {
+  const loadMerk = useCallback(async (inputValue, callback) => {
+    if (!config) return
     try {
-      const res = await fetch(`${BaseUrl}/api/master/merk/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(createCariPayload(1, 50, "nama_merk asc", inputValue))
-      })
-      const result = await res.json()
-      if (res.ok) callback(result.data?.map(m => ({ label: m.nama_merk, value: m.ID })) || [])
+      const { data } = await axios.post(`${BaseUrl}/api/master/merk/cari`, 
+        createCariPayload(1, 50, "nama_merk asc", inputValue), 
+        config
+      )
+      callback(data.data?.map(m => ({ label: m.nama_merk, value: m.ID })) || [])
     } catch (e) { console.error(e) }
-  }
+  }, [config])
 
-  const fetchData = useCallback(async () => {
+  // --- Data Fetching ---
+  const fetchData = useCallback(async (searchVal = searchTerm) => {
+    if (!config) return
     setLoading(true)
     try {
-      const resBrg = await fetch(`${BaseUrl}/api/master/barang/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(createCariPayload(currentPage, itemsPerPage, order, searchTerm))
-      })
+      const { data } = await axios.post(`${BaseUrl}/api/master/barang/cari`, 
+        createCariPayload(currentPage, itemsPerPage, order, searchVal), 
+        config
+      )
 
-      const resultBrg = await resBrg.json()
-      if (resBrg.ok) {
-        setData(resultBrg.data || [])
-        setTotalItems(resultBrg.total || 0)
-      } else {
-        toast.error(resultBrg.message || 'Gagal mengambil data barang')
-      }
-    } catch {
-      toast.error('Koneksi ke server terputus')
+      setData(data.data || [])
+      setTotalItems(data.total || 0)
+    } catch (error) {
+      console.error(error)
+      toast.error('Gagal mengambil data barang')
     } finally {
       setLoading(false)
     }
-  }, [currentPage, itemsPerPage, searchTerm, order])
-
+  }, [config, currentPage, itemsPerPage, order])
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchData())
-  }, [fetchData])
+    const delayDebounceFn = setTimeout(() => {
+      fetchData(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, fetchData])
 
   const openModal = (item = null) => {
     if (item) {
@@ -216,44 +215,38 @@ function MasterBarang() {
   const onFormSubmit = async (formData) => {
     try {
       const url = `${BaseUrl}/api/master/barang/`
-      const method = editingId ? 'PUT' : 'POST'
       const payload = editingId ? { ...formData, id: editingId } : formData
 
-      const res = await fetch(url, {
-        method,
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(payload)
-      })
+      const res = editingId 
+        ? await axios.put(url, payload, config)
+        : await axios.post(url, payload, config)
 
-      const result = await res.json()
-      if (res.ok) {
+      if (res.status === 200 || res.status === 201) {
         toast.success(editingId ? 'Data barang diperbarui!' : 'Barang baru ditambahkan!')
         closeModal()
         fetchData()
       } else {
-        toast.error(result.message || 'Gagal menyimpan data')
+        toast.error(res.data?.message || 'Gagal menyimpan data')
       }
-    } catch {
-      toast.error('Terjadi kesalahan sistem')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem')
     }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus barang ini?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/master/barang/${id}`, {
-        method: 'DELETE',
-        headers: UserHelper.authHeader()
-      })
-      if (res.ok) {
+      const res = await axios.delete(`${BaseUrl}/api/master/barang/${id}`, config)
+      if (res.status === 200) {
         toast.success('Barang dihapus!')
         fetchData()
       } else {
-        const result = await res.json()
-        toast.error(result.message || 'Gagal menghapus')
+        toast.error(res.data?.message || 'Gagal menghapus')
       }
-    } catch {
-      toast.error('Kesalahan koneksi')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi')
     }
   }
 

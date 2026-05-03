@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
@@ -107,6 +108,7 @@ function Otoritas() {
   const [itemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
+  const [config] = useState(() => UserHelper.axiosConfig())
 
   const { register, handleSubmit, reset, setValue } = useForm({
     defaultValues: {
@@ -114,37 +116,35 @@ function Otoritas() {
     }
   })
 
-  const fetchData = useCallback(async () => {
+  // --- Data Fetching ---
+  // --- Data Fetching ---
+  const fetchData = useCallback(async (searchVal = searchTerm) => {
+    if (!config) return
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/otoritas/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({
-          limit: itemsPerPage.toString(),
-          page: currentPage.toString(),
-          order: order,
-          search: searchTerm || null
-        })
-      })
-      const result = await res.json()
-      if (res.ok) {
-        setData(result.data || [])
-        setTotalItems(result.total || 0)
-      } else {
-        toast.error(result.message || 'Gagal mengambil data')
-      }
-    } catch {
-      toast.error('Koneksi ke server terputus')
+      const { data } = await axios.post(`${BaseUrl}/api/otoritas/cari`, {
+        "Search": searchVal || null,
+        "Limit": String(itemsPerPage),
+        "Page": String(currentPage),
+        "Order": order
+      }, config)
+
+      setData(data.data || [])
+      setTotalItems(data.total || 0)
+    } catch (error) {
+      console.error(error)
+      toast.error('Gagal mengambil data')
     } finally {
       setLoading(false)
     }
-  }, [currentPage, itemsPerPage, searchTerm, order])
-
+  }, [config, itemsPerPage, currentPage, order])
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchData())
-  }, [fetchData])
+    const delayDebounceFn = setTimeout(() => {
+      fetchData(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, fetchData])
 
   const openModal = (item = null) => {
     if (item) {
@@ -166,43 +166,37 @@ function Otoritas() {
   const onFormSubmit = async (formData) => {
     try {
       const url = editingId ? `${BaseUrl}/api/otoritas/${editingId}` : `${BaseUrl}/api/otoritas/`
-      const method = editingId ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
-        method,
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(formData)
-      })
+      const res = editingId 
+        ? await axios.put(url, formData, config)
+        : await axios.post(url, formData, config)
 
-      const result = await res.json()
-      if (res.ok) {
+      if (res.status === 200 || res.status === 201) {
         toast.success(editingId ? 'Otoritas diperbarui!' : 'Otoritas ditambah!')
         closeModal()
         fetchData()
       } else {
-        toast.error(result.message || 'Gagal menyimpan data')
+        toast.error(res.data?.message || 'Gagal menyimpan data')
       }
-    } catch {
-      toast.error('Terjadi kesalahan sistem')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan sistem')
     }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus otoritas ini?')) return
     try {
-      const res = await fetch(`${BaseUrl}/api/otoritas/${id}`, {
-        method: 'DELETE',
-        headers: UserHelper.authHeader()
-      })
-      if (res.ok) {
+      const res = await axios.delete(`${BaseUrl}/api/otoritas/${id}`, config)
+      if (res.status === 200) {
         toast.success('Otoritas dihapus!')
         fetchData()
       } else {
-        const result = await res.json()
-        toast.error(result.message || 'Gagal menghapus')
+        toast.error(res.data?.message || 'Gagal menghapus')
       }
-    } catch {
-      toast.error('Kesalahan koneksi')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Kesalahan koneksi')
     }
   }
 

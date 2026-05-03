@@ -1,78 +1,82 @@
-# Inventory Management System - Frontend (v1.0.0)
+# Inventory Management System - Frontend
 
-Antarmuka pengguna (UI) modern untuk sistem manajemen inventaris, dibangun dengan fokus pada performa, estetika premium, dan stabilitas menggunakan React 19.
+Sistem Manajemen Inventaris (FE) adalah aplikasi web modern yang dirancang untuk mengelola stok barang, aset perusahaan, dan manajemen pegawai dengan antarmuka yang elegan dan performa tinggi. Aplikasi ini dibangun menggunakan **React 19** dan **Tailwind CSS** dengan fokus pada estetika premium dan pengalaman pengguna yang mulus.
 
 ---
 
-## 🚀 Fitur Frontend
-- **Premium Dashboard**: Visualisasi data dengan desain modern.
-- **Master Data UI**: Manajemen Pegawai, Bagian, dan Otoritas dengan tabel kustom.
-- **Custom Premium Table**: Native implementation untuk performa maksimal di React 19 (Zero third-party table library).
-- **Glassmorphism UI**: Efek blur transparan yang elegan di seluruh komponen.
-- **Full Dark Mode Support**: Transisi tema gelap dan terang yang halus.
-- **Responsive Sidebar**: Navigasi yang bersih dengan dropdown dan menu development.
+## 🚀 Fitur Utama
+
+- **Role-Based Dashboard**: Tampilan cerdas yang menyesuaikan informasi (Stats & Quick Actions) berdasarkan peran pengguna (Admin, Kepala BPS, Pengadaan, atau Staf).
+- **Master Data Management**: Kelola data Pegawai, Produk, Bagian, dan Lokasi dengan antarmuka modal yang intuitif.
+- **Custom Premium Table**: Sistem tabel native tanpa library pihak ketiga, dioptimalkan sepenuhnya untuk React 19 agar tetap stabil dan cepat.
+- **Monitoring Stok & Aset**: Pantau pergerakan barang masuk/keluar secara real-time dengan alert stok menipis yang proaktif.
+- **Glassmorphism Design**: Estetika modern menggunakan efek blur transparan, gradien vibrant, dan dark mode yang elegan.
+- **Berkas Digital**: Manajemen dokumen digital untuk pegawai seperti ijazah, transkrip, dan foto profil.
 
 ---
 
 ## 🛠️ Tech Stack
-- **Framework**: React 19
-- **Bundler**: Vite
-- **Styling**: Tailwind CSS
-- **Icons**: React Icons (Hi)
-- **Context**: Theme Context (Dark/Light Mode)
+
+- **Framework Core**: React 19 (Latest)
+- **Styling**: Tailwind CSS (Native Framework)
+- **Icons & Visuals**: React Icons (Hi/Tb)
+- **State Management**: React Hook Form (Form Logic) & Context API (Themes)
+- **Data Fetching**: Axios
 - **Routing**: React Router DOM v6
+- **Animations**: Tailwind Animate & Transitions
 
 ---
 
-## 📝 Update Log (Frontend)
-
-### **Mei 2, 2026**
-- **Architecture Standardization (React-Hook-Form)**:
-    - Migrasi seluruh modul Master Data ke `react-hook-form` untuk manajemen state yang lebih efisien dan stabil.
-    - Implementasi `Controller` untuk integrasi `react-select` dan `AsyncSelect` yang lebih clean.
-- **Stability & Performance Fix**:
-    - Implementasi pattern `Promise.resolve().then(() => fetchData())` di dalam `useEffect` untuk menghilangkan warning React 19 terkait update state saat rendering.
-    - Standarisasi pola `fetchData` menggunakan `useCallback` untuk mencegah re-render yang tidak perlu.
-- **Server-Side Filtering Standardization**:
-    - Mengharuskan pola `POST /cari` (FindByFilter) pada seluruh modul untuk performa pencarian yang optimal di sisi server.
-    - Menambahkan helper `createCariPayload` di `src/helper/tableHelper.js` untuk simplifikasi pembuatan body request API.
-- **Full Module Refactoring**:
-    - Menyelesaikan modernisasi modul: **Pegawai, MasterBarang, Supplier, StokBarang, Otoritas, Bagian, Satuan, Ruangan, JenisBarang,** dan **Merk**.
-- **Modal Logic Optimization**:
-    - Memperbaiki lifecycle modal sehingga form otomatis ter-reset dengan bersih saat dibuka atau ditutup.
-
-### **Mei 1, 2026**
-- **Table System Overhaul**: Mengganti `react-data-table-component` dengan **Custom Premium Table** (Native Tailwind) untuk memperbaiki error rendering di React 19.
-- **API Integration**: Implementasi mapping data baru untuk `list_otoritas` dan `bagian`.
-- **CRUD Stabilization**: Sinkronisasi fitur Toggle Status dengan backend via endpoint `UpdateAdmin`.
-- **Sidebar Polishing**:
-    - Menghapus tombol "Lengkapi Berkas" yang redundan.
-    - Menyesuaikan jarak menu Development.
-    - Menambahkan divider pill-shaped.
-- **Watermark Layout**: Menambahkan identitas author di footer layout utama.
-
----
-
-## ⚙️ Panduan Instalasi (Frontend)
+## ⚙️ Panduan Instalasi
 
 ### Prasyarat
-- Node.js (versi terbaru direkomendasikan)
-- npm atau yarn
+- **Node.js**: Versi 18.x atau lebih baru (v20+ direkomendasikan).
+- **npm**: v9.x atau lebih baru.
 
-### Langkah Instalasi
-1. Clone repository atau masuk ke folder `inventory-fe`.
-2. Install dependencies:
+### Langkah-langkah
+1. **Clone Repository**:
+   ```bash
+   git clone <repository-url>
+   cd inventory-fe
+   ```
+
+2. **Install Dependencies**:
    ```bash
    npm install
    ```
-3. Konfigurasi Endpoint API:
-   Pastikan file `src/helper/api.js` sudah mengarah ke URL backend yang benar (default: `http://localhost:8080`).
 
-4. Jalankan aplikasi:
+3. **Konfigurasi Lingkungan (Environment)**:
+   Buat atau sesuaikan konfigurasi API pada `src/helper/api.js`. Secara default, aplikasi akan mencoba terhubung ke:
+   ```javascript
+   // Default Backend URL
+   http://localhost:8080
+   ```
+   Atau buat file `.env` di root folder:
+   ```env
+   VITE_API_URL=http://your-backend-ip:8080
+   ```
+
+4. **Jalankan Development Server**:
    ```bash
    npm run dev
    ```
-5. Akses aplikasi di browser melalui: `http://localhost:5173`.
+
+5. **Akses Aplikasi**:
+   Buka browser dan akses [http://localhost:5173](http://localhost:5173).
+
+---
+
+## 📂 Struktur Proyek
+- `src/components`: Komponen UI reusable.
+- `src/pages`: Halaman utama aplikasi (Dashboard, Master, Login, dll).
+- `src/layout`: Wrapper layout (Sidebar, Header, Footer).
+- `src/helper`: Utilitas API dan manajemen user (Auth).
+- `src/constants`: Konstanta untuk Menu, Otoritas, dan statis data lainnya.
+
+---
+
+## 📝 Catatan Perubahan
+Riwayat pengembangan dan update fitur dapat dilihat di file [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 

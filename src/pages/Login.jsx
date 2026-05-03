@@ -40,7 +40,7 @@ function Login() {
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data?.message || 'Login gagal. Periksa email dan password Anda.')
+        toast.error(data?.errors || data?.message || 'Login gagal. Periksa email dan password Anda.')
         return
       }
 

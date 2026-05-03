@@ -4,7 +4,6 @@ import { ThemeContext } from '../../context/ThemeContext'
 import { menus } from '../../constants/menus'
 import {
   HiChartPie,
-  HiUserCircle,
   HiBeaker,
   HiChevronDown,
   HiUsers,
@@ -116,8 +115,6 @@ function SidebarContent() {
         {/* --- DASHBOARD --- */}
         <MainMenuItem to="/dashboard" name="Dashboard" icon={<HiChartPie className="w-5 h-5" />} active={isActive('/dashboard')} />
 
-        {/* --- PROFILE --- */}
-        <MainMenuItem to="/profile" name="Profile Saya" icon={<HiUserCircle className="w-5 h-5" />} active={isActive('/profile')} />
 
 
         {/* --- MASTER PEGAWAI --- */}

@@ -121,7 +121,7 @@ function Header() {
               onClick={toggleProfileMenu}
             >
               <span className="hidden md:inline text-sm font-semibold text-gray-700 dark:text-gray-200">
-                {user?.nickname || 'User'}
+                {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User' : 'User'}
               </span>
               <img
                 className="object-cover w-8 h-8 rounded-full border-2 border-transparent hover:border-purple-400 transition-colors duration-150"
