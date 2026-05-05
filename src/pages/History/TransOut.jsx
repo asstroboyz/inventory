@@ -59,7 +59,7 @@ const TransOut = () => {
               </div>
               History Trans Out
             </h2>
-            <p className="text-xs text-gray-500 mt-1 ml-11 italic">Log riwayat pengeluaran atau mutasi barang keluar.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-11 italic">Log riwayat pengeluaran atau mutasi barang keluar.</p>
           </div>
           <div className="relative w-full sm:w-80">
             <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -109,7 +109,7 @@ const TransOut = () => {
                   </tr>
                 ) : (
                   paginatedData.map((row, index) => (
-                    <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors group">
+                    <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors group">
                       <td className="px-6 py-4 text-sm text-center font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                       <td className="px-6 py-4 text-sm font-semibold">
                         {row.tanggal_barang_keluar || row.CreatedAt?.split('T')[0]}
@@ -117,10 +117,10 @@ const TransOut = () => {
                       <td className="px-6 py-4 text-sm">
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 dark:text-gray-200">{row.informasi_tambahan || 'Pengeluaran Barang'}</span>
-                          <span className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">REF-LOG-{row.ID}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono tracking-widest uppercase">REF-LOG-{row.ID}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-red-600">
+                      <td className="px-6 py-4 text-right font-bold text-red-600 dark:text-red-400">
                         <span className="bg-red-100 dark:bg-red-900/40 px-3 py-1 rounded-lg">-{row.jumlah_perubahan}</span>
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-gray-100 font-mono">

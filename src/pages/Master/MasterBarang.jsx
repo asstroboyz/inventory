@@ -125,9 +125,9 @@ function MasterBarang() {
   const { register, handleSubmit, reset, control } = useForm({
     defaultValues: {
       nama_brg: '',
-      kode_brg: '',
       jenis_id: '',
-      merk_id: ''
+      merk_id: '',
+      satuan_id: ''
     }
   })
 
@@ -150,6 +150,17 @@ function MasterBarang() {
         config
       )
       callback(data.data?.map(m => ({ label: m.nama_merk, value: m.ID })) || [])
+    } catch (e) { console.error(e) }
+  }, [config])
+
+  const loadSatuan = useCallback(async (inputValue, callback) => {
+    if (!config) return
+    try {
+      const { data } = await axios.post(`${BaseUrl}/api/master/satuan/cari`, 
+        createCariPayload(1, 50, "nama_satuan asc", inputValue), 
+        config
+      )
+      callback(data.data?.map(s => ({ label: s.nama_satuan, value: s.ID })) || [])
     } catch (e) { console.error(e) }
   }, [config])
 
@@ -185,17 +196,17 @@ function MasterBarang() {
       setEditingId(item.ID || item.id)
       reset({
         nama_brg: item.nama_brg || '',
-        kode_brg: item.kode_brg || '',
         jenis_id: item.jenis_id || '',
-        merk_id: item.merk_id || ''
+        merk_id: item.merk_id || '',
+        satuan_id: item.satuan_id || ''
       })
     } else {
       setEditingId(null)
       reset({
         nama_brg: '',
-        kode_brg: '',
         jenis_id: '',
-        merk_id: ''
+        merk_id: '',
+        satuan_id: ''
       })
     }
     setIsModalOpen(true)
@@ -205,7 +216,6 @@ function MasterBarang() {
     setIsModalOpen(false)
     reset({
       nama_brg: '',
-      kode_brg: '',
       jenis_id: '',
       merk_id: ''
     })
@@ -343,15 +353,7 @@ function MasterBarang() {
               </header>
               <form onSubmit={handleSubmit(onFormSubmit)}>
                 <div className="p-8 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <label className="block text-sm">
-                      <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Kode Barang</span>
-                      <input
-                        {...register('kode_brg', { required: true })}
-                        placeholder="Contoh: BRG-001"
-                        className="form-input mt-2"
-                      />
-                    </label>
+                  <div className="grid grid-cols-1 gap-6">
                     <label className="block text-sm">
                       <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Nama Barang</span>
                       <input
@@ -397,6 +399,29 @@ function MasterBarang() {
                               loadOptions={loadMerk}
                               styles={selectStyles}
                               value={field.value ? { label: "Selected Merk", value: field.value } : null}
+                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                            />
+                          )}
+                        />
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <label className="block text-sm">
+                      <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Satuan</span>
+                      <div className="mt-2">
+                        <Controller
+                          name="satuan_id"
+                          control={control}
+                          render={({ field }) => (
+                            <AsyncSelect
+                              {...field}
+                              cacheOptions
+                              defaultOptions
+                              loadOptions={loadSatuan}
+                              styles={selectStyles}
+                              value={field.value ? { label: "Selected Satuan", value: field.value } : null}
                               onChange={(opt) => field.onChange(opt ? opt.value : '')}
                             />
                           )}

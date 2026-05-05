@@ -46,36 +46,32 @@ const CustomPremiumTable = ({
               </tr>
             ) : (
               data.map((row, index) => (
-                <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 transition-colors">
+                <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-4 text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-bold text-gray-800 dark:text-gray-200">
-                        {row.master_detail?.master_data?.nama_brg || 'Unknown Item'}
-                      </span>
-                      <span className="text-[10px] text-gray-400 font-mono">
-                        Barcode: {row.master_detail?.barcode || '-'}
-                      </span>
+                      <span className="font-bold text-gray-800 dark:text-gray-200">{row.master_barang?.nama_brg}</span>
+                      <span className="text-[10px] text-gray-400 font-mono">{row.master_barang?.kode_brg}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm">
                     {row.master_detail?.tipe_barang || '-'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full font-bold font-mono ${row.stok > 10 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    <span className={`px-3 py-1 rounded-full font-bold font-mono ${row.stok > 10 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
                       }`}>
                       {row.stok}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm uppercase font-semibold text-gray-500">
-                    {row.satuan?.satuan_nama || '-'}
+                    {row.satuan?.nama_satuan || '-'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
-                      <button onClick={() => onEdit(row)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                      <button onClick={() => onEdit(row)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all">
                         <HiPencil className="w-5 h-5" />
                       </button>
-                      <button onClick={() => onDelete(row.ID || row.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                      <button onClick={() => onDelete(row.ID || row.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all">
                         <HiTrash className="w-5 h-5" />
                       </button>
                     </div>
@@ -90,8 +86,8 @@ const CustomPremiumTable = ({
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t flex justify-between items-center">
         <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Halaman {currentPage} dari {totalPages || 1}</span>
         <div className="flex items-center gap-2">
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-2 rounded-xl border border-gray-200 disabled:opacity-30"><HiChevronLeft /></button>
-          <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(prev => prev + 1)} className="p-2 rounded-xl border border-gray-200 disabled:opacity-30"><HiChevronRight /></button>
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 disabled:opacity-30 transition-all"><HiChevronLeft /></button>
+          <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(prev => prev + 1)} className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 disabled:opacity-30 transition-all"><HiChevronRight /></button>
         </div>
       </div>
     </div>
@@ -113,13 +109,42 @@ function StokBarang() {
 
   const { register, handleSubmit, reset, control } = useForm({
     defaultValues: {
-      master_detail_id: '',
+      master_barang_id: '',
       satuan_id: '',
       stok: 0,
       tanggal_masuk: '',
       jenis_transaksi: 'Initial Stock'
     }
   })
+
+  const selectStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: 'transparent',
+      borderColor: state.isFocused ? '#3b82f6' : document.documentElement.classList.contains('dark') ? '#4b5563' : '#e5e7eb',
+      borderRadius: '1rem',
+      padding: '0.2rem',
+      boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.1)' : 'none',
+      '&:hover': { borderColor: '#3b82f6' }
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+      borderRadius: '1rem',
+      overflow: 'hidden',
+      border: '1px solid',
+      borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
+      zIndex: 9999
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? (document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6') : 'transparent',
+      color: state.isSelected ? '#ffffff' : (document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937'),
+      cursor: 'pointer'
+    }),
+    singleValue: base => ({ ...base, color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937' }),
+    placeholder: base => ({ ...base, color: '#9ca3af', fontSize: '0.875rem' })
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -158,16 +183,7 @@ function StokBarang() {
       })
       const result = await res.json()
       if (res.ok) {
-        const options = []
-        result.data?.forEach(m => {
-          m.details?.forEach(d => {
-            options.push({
-              label: `${m.nama_brg} - ${d.tipe_barang} (${d.barcode})`,
-              value: d.ID
-            })
-          })
-        })
-        callback(options)
+        callback(result.data?.map(m => ({ label: `${m.nama_brg} (${m.kode_brg})`, value: m.ID })) || [])
       }
     } catch (e) { console.error(e) }
   }
@@ -177,11 +193,11 @@ function StokBarang() {
       const res = await fetch(`${BaseUrl}/api/master/satuan/cari`, {
         method: 'POST',
         headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "satuan_nama asc" })
+        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_satuan asc" })
       })
       const result = await res.json()
       if (res.ok) {
-        callback(result.data?.map(s => ({ label: s.satuan_nama, value: s.ID })) || [])
+        callback(result.data?.map(s => ({ label: s.nama_satuan, value: s.ID })) || [])
       }
     } catch (e) { console.error(e) }
   }
@@ -321,7 +337,7 @@ function StokBarang() {
                     <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Barang (Catalog)</span>
                     <div className="mt-2">
                        <Controller
-                         name="master_detail_id"
+                         name="master_barang_id"
                          control={control}
                          render={({ field }) => (
                            <AsyncSelect
@@ -331,7 +347,8 @@ function StokBarang() {
                              loadOptions={loadBarang}
                              placeholder="Cari Barang..."
                              classNamePrefix="select"
-                             value={field.value ? { label: "Selected Item", value: field.value } : null}
+                             styles={selectStyles}
+                             value={field.value ? { label: "Item Terpilih", value: field.value } : null}
                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
                            />
                          )}
@@ -352,7 +369,8 @@ function StokBarang() {
                              loadOptions={loadSatuan}
                              placeholder="Cari Satuan..."
                              classNamePrefix="select"
-                             value={field.value ? { label: "Selected Satuan", value: field.value } : null}
+                             styles={selectStyles}
+                             value={field.value ? { label: "Satuan Terpilih", value: field.value } : null}
                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
                            />
                          )}
@@ -387,7 +405,7 @@ function StokBarang() {
                   </label>
                 </div>
                 <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 flex justify-end space-x-3 border-t dark:border-gray-700">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-xl transition-all">Batal</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all">Batal</button>
                   <button type="submit" className="px-8 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg active:scale-95 transition-all">
                     Simpan
                   </button>

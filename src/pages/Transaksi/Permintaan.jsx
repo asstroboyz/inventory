@@ -211,7 +211,7 @@ function Permintaan() {
               </div>
               Transaksi Permintaan
             </h2>
-            <p className="text-xs text-gray-500 mt-1 ml-11">Kelola permohonan pengambilan barang dari stok inventaris.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-11">Kelola permohonan pengambilan barang dari stok inventaris.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -233,7 +233,7 @@ function Permintaan() {
 
         <CustomPremiumTable 
           loading={loading}
-          data={paginatedData}
+          data={data}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           totalPages={totalPages}
@@ -251,7 +251,7 @@ function Permintaan() {
                   <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                     Detail Permintaan <span className="text-purple-600 font-mono">{selectedItem.permintaan_code}</span>
                   </h3>
-                  <p className="text-xs text-gray-500 mt-1">Daftar item barang yang diminta oleh pegawai.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Daftar item barang yang diminta oleh pegawai.</p>
                 </div>
                 <button onClick={() => setIsDetailModalOpen(false)} className="p-2 hover:bg-red-500 hover:text-white rounded-full transition-all text-gray-400">
                   <HiX className="w-6 h-6" />
@@ -276,7 +276,7 @@ function Permintaan() {
                     <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Status Permintaan</p>
                     <div className="flex items-center gap-2">
                       {selectedItem.status === 'Approved' ? <HiCheckCircle className="text-green-500 w-5 h-5" /> : selectedItem.status === 'Rejected' ? <HiExclamationCircle className="text-red-500 w-5 h-5" /> : <HiClock className="text-orange-500 w-5 h-5" />}
-                      <span className="text-sm font-bold uppercase tracking-wide">{selectedItem.status}</span>
+                      <span className="text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300">{selectedItem.status}</span>
                     </div>
                   </div>
                 </div>

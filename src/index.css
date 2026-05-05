@@ -43,3 +43,40 @@
     transform: translateY(-6px);
   }
 }
+
+/* React Select Dark Mode Fix */
+.dark .select__control {
+  @apply bg-gray-900/50 border-gray-600 text-gray-200 !important;
+}
+
+.dark .select__menu {
+  @apply bg-gray-800 border-gray-700 !important;
+}
+
+.dark .select__option {
+  @apply text-gray-300 !important;
+}
+
+.dark .select__option--is-focused {
+  @apply bg-gray-700 text-white !important;
+}
+
+.dark .select__option--is-selected {
+  @apply bg-purple-600 text-white !important;
+}
+
+.dark .select__single-value {
+  @apply text-gray-200 !important;
+}
+
+.dark .select__input-container {
+  @apply text-gray-200 !important;
+}
+
+.dark .select__placeholder {
+  @apply text-gray-500 !important;
+}
+
+.dark .select__indicator {
+  @apply text-gray-500 hover:text-gray-300 !important;
+}
