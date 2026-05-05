@@ -210,7 +210,7 @@ function StokBarang() {
     if (item) {
       setEditingId(item.ID || item.id)
       reset({
-        master_detail_id: item.master_detail_id || '',
+        master_barang_id: item.master_barang_id || '',
         satuan_id: item.satuan_id || '',
         stok: item.stok || 0,
         tanggal_masuk: item.tanggal_masuk ? new Date(item.tanggal_masuk).toISOString().split('T')[0] : '',
@@ -219,7 +219,7 @@ function StokBarang() {
     } else {
       setEditingId(null)
       reset({
-        master_detail_id: '',
+        master_barang_id: '',
         satuan_id: '',
         stok: 0,
         tanggal_masuk: new Date().toISOString().split('T')[0],
@@ -233,7 +233,16 @@ function StokBarang() {
     try {
       const url = `${BaseUrl}/api/record/barang/`
       const method = editingId ? 'PUT' : 'POST'
-      const payload = editingId ? { ...formData, id: editingId } : formData
+
+      // Ensure numeric fields are numbers
+      const formattedData = {
+        ...formData,
+        stok: parseInt(formData.stok) || 0,
+        master_barang_id: parseInt(formData.master_barang_id) || 0,
+        satuan_id: parseInt(formData.satuan_id) || 0
+      }
+
+      const payload = editingId ? { ...formattedData, id: parseInt(editingId) } : formattedData
 
       const res = await fetch(url, {
         method,

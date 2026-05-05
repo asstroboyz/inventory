@@ -22,6 +22,19 @@ const StokInventaris = () => {
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
 
+  const [selectedOptions, setSelectedOptions] = useState({
+    barang: null,
+    satuan: null,
+    ruangan: null,
+    kondisi: { label: 'Baik', value: 'Baik' }
+  })
+
+  const kondisiOptions = [
+    { label: 'Baik', value: 'Baik' },
+    { label: 'Rusak Ringan', value: 'Rusak Ringan' },
+    { label: 'Rusak Berat', value: 'Rusak Berat' }
+  ]
+
 
 
 
@@ -101,7 +114,7 @@ const StokInventaris = () => {
       const res = await fetch(`${BaseUrl}/api/master/barang/cari`, {
         method: 'POST',
         headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_brg asc" })
+        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_brg asc", tipe_id: 1 })
       })
       const result = await res.json()
       if (res.ok) {
@@ -138,6 +151,13 @@ const StokInventaris = () => {
     } catch (e) { console.error(e) }
   }
 
+  const loadKondisi = (inputValue, callback) => {
+    const filtered = kondisiOptions.filter(i =>
+      i.label.toLowerCase().includes(inputValue.toLowerCase())
+    )
+    callback(filtered)
+  }
+
   useEffect(() => {
     Promise.resolve().then(() => fetchData())
   }, [fetchData])
@@ -159,7 +179,15 @@ const StokInventaris = () => {
         ruangan_id: item.ruangan_id || '',
         kondisi: item.kondisi || 'Baik',
         spesifikasi: item.spesifikasi || '',
-        tgl_perolehan: item.tgl_perolehan || ''
+        tgl_perolehan: item.tgl_perolehan ? item.tgl_perolehan.split('T')[0] : '',
+        qrcode: item.qrcode || '',
+        kode_inventaris: item.kode_inventaris || ''
+      })
+      setSelectedOptions({
+        barang: item.barang ? { label: item.barang.nama_brg, value: item.barang.ID } : null,
+        satuan: item.satuan ? { label: item.satuan.nama_satuan, value: item.satuan.ID } : null,
+        ruangan: item.ruangan ? { label: item.ruangan.nama_ruangan, value: item.ruangan.ID } : null,
+        kondisi: item.kondisi ? { label: item.kondisi, value: item.kondisi } : { label: 'Baik', value: 'Baik' }
       })
     } else {
       setEditingId(null)
@@ -170,6 +198,12 @@ const StokInventaris = () => {
         kondisi: 'Baik',
         spesifikasi: '',
         tgl_perolehan: new Date().toISOString().split('T')[0]
+      })
+      setSelectedOptions({
+        barang: null,
+        satuan: null,
+        ruangan: null,
+        kondisi: { label: 'Baik', value: 'Baik' }
       })
     }
     setIsModalOpen(true)
@@ -226,6 +260,7 @@ const StokInventaris = () => {
               <thead>
                 <tr className="text-xs font-bold text-gray-500 uppercase border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                   <th className="px-6 py-4 text-left">No</th>
+                  <th className="px-6 py-4 text-left">QR Code</th>
                   <th className="px-6 py-4 text-left">Kode Inventaris</th>
                   <th className="px-6 py-4 text-left">Nama Aset</th>
                   <th className="px-6 py-4 text-left">Lokasi</th>
@@ -243,6 +278,13 @@ const StokInventaris = () => {
 
                     <tr key={row.ID} className="text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:text-gray-400 transition-colors">
                       <td className="px-6 py-4">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="px-6 py-4">
+                        {row.qrcode ? (
+                          <img src={row.qrcode} alt="QR" className="w-10 h-10 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600 bg-white p-1 cursor-zoom-in" onClick={() => openModal(row)} />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[8px] text-gray-400 uppercase">No QR</div>
+                        )}
+                      </td>
                       <td className="px-6 py-4 font-mono font-bold text-orange-600">{row.kode_inventaris}</td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
@@ -282,42 +324,75 @@ const StokInventaris = () => {
                 <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-red-500 rounded-full transition-all"><HiX className="w-6 h-6" /></button>
               </header>
               <form onSubmit={handleSubmit} className="p-8 space-y-5">
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Barang (Catalog)</span>
-                    <AsyncSelect
-                      cacheOptions
-                      defaultOptions
-                      loadOptions={loadBarang}
-                      placeholder="Pilih Barang..."
-                      className="mt-1"
-                      classNamePrefix="select"
-                      styles={selectStyles}
-                      onChange={(opt) => setFormData({ ...formData, master_barang_id: opt?.value })}
-                      value={formData.master_barang_id ? { label: "Item Terpilih", value: formData.master_barang_id } : null}
-                    />
-                  </div>
-                  <div className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Ruangan</span>
-                    <AsyncSelect
-                      cacheOptions
-                      defaultOptions
-                      loadOptions={loadRuangan}
-                      placeholder="Pilih Ruangan..."
-                      className="mt-1"
-                      classNamePrefix="select"
-                      styles={selectStyles}
-                      onChange={(opt) => setFormData({ ...formData, ruangan_id: opt?.value })}
-                      value={formData.ruangan_id ? { label: "Ruangan Terpilih", value: formData.ruangan_id } : null}
-                    />
+                <div className={`grid grid-cols-1 ${editingId ? 'md:grid-cols-3' : ''} gap-5`}>
+                  {editingId && (
+                    <div className="md:col-span-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl p-4 border border-dashed border-gray-200 dark:border-gray-700">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase mb-2">QR Asset</span>
+                      {formData.qrcode ? (
+                        <div className="bg-white p-2 rounded-xl shadow-inner">
+                          <img src={formData.qrcode} alt="QR" className="w-32 h-32" />
+                          <p className="text-[8px] text-center text-gray-400 mt-1 font-mono uppercase">{formData.kode_inventaris}</p>
+                        </div>
+                      ) : (
+                        <div className="w-32 h-32 flex flex-col items-center justify-center text-gray-300 text-center">
+                          <HiBriefcase className="w-12 h-12 opacity-20" />
+                          <p className="text-[9px] mt-2 italic">No QR Available</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className={`${editingId ? 'md:col-span-2' : ''} space-y-5`}>
+                    <div className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Barang (Catalog)</span>
+                      <AsyncSelect
+                        cacheOptions
+                        defaultOptions
+                        loadOptions={loadBarang}
+                        placeholder="Pilih Barang..."
+                        className="mt-1"
+                        classNamePrefix="select"
+                        styles={selectStyles}
+                        onChange={(opt) => {
+                          setFormData({ ...formData, master_barang_id: opt?.value })
+                          setSelectedOptions(prev => ({ ...prev, barang: opt }))
+                        }}
+                        value={selectedOptions.barang}
+                      />
+                    </div>
+                    <div className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Ruangan</span>
+                      <AsyncSelect
+                        cacheOptions
+                        defaultOptions
+                        loadOptions={loadRuangan}
+                        placeholder="Pilih Ruangan..."
+                        className="mt-1"
+                        classNamePrefix="select"
+                        styles={selectStyles}
+                        onChange={(opt) => {
+                          setFormData({ ...formData, ruangan_id: opt?.value })
+                          setSelectedOptions(prev => ({ ...prev, ruangan: opt }))
+                        }}
+                        value={selectedOptions.ruangan}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
                   <label className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Kondisi</span>
-                    <select name="kondisi" className="form-input mt-1 dark:bg-gray-700 dark:text-white dark:border-gray-600" value={formData.kondisi} onChange={handleInputChange}>
-                      <option value="Baik">Baik</option>
-                      <option value="Rusak Ringan">Rusak Ringan</option>
-                      <option value="Rusak Berat">Rusak Berat</option>
-                    </select>
+                    <AsyncSelect
+                      cacheOptions
+                      defaultOptions
+                      loadOptions={loadKondisi}
+                      className="mt-1"
+                      classNamePrefix="select"
+                      styles={selectStyles}
+                      onChange={(opt) => {
+                        setFormData({ ...formData, kondisi: opt?.value })
+                        setSelectedOptions(prev => ({ ...prev, kondisi: opt }))
+                      }}
+                      value={selectedOptions.kondisi}
+                    />
                   </label>
                   <div className="block text-sm"><span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Satuan</span>
                     <AsyncSelect
@@ -328,8 +403,11 @@ const StokInventaris = () => {
                       className="mt-1"
                       classNamePrefix="select"
                       styles={selectStyles}
-                      onChange={(opt) => setFormData({ ...formData, satuan_id: opt?.value })}
-                      value={formData.satuan_id ? { label: "Satuan Terpilih", value: formData.satuan_id } : null}
+                      onChange={(opt) => {
+                        setFormData({ ...formData, satuan_id: opt?.value })
+                        setSelectedOptions(prev => ({ ...prev, satuan: opt }))
+                      }}
+                      value={selectedOptions.satuan}
                     />
                   </div>
                 </div>

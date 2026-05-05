@@ -13,6 +13,8 @@ export const menus = [
   { name: 'Master Jenis Barang', path: '/master/jenis-barang' },
   { name: 'Master Merk', path: '/master/merk' },
   { name: 'Master Satuan', path: '/master/satuan' },
+  { name: 'Master Tipe Barang', path: '/master/tipe-barang' },
+  { name: 'Master Jenis Transaksi', path: '/master/jenis-transaksi' },
   { name: 'Master Supplier', path: '/master/supplier' },
   
   // Master Lokasi

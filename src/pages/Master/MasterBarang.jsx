@@ -12,15 +12,15 @@ import AsyncSelect from 'react-select/async'
 /**
  * Premium Custom Table for Master Barang
  */
-const CustomPremiumTable = ({ 
-  loading, 
-  data, 
-  currentPage, 
-  itemsPerPage, 
-  totalPages, 
-  setCurrentPage, 
-  onEdit, 
-  onDelete 
+const CustomPremiumTable = ({
+  loading,
+  data,
+  currentPage,
+  itemsPerPage,
+  totalPages,
+  setCurrentPage,
+  onEdit,
+  onDelete
 }) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
@@ -36,20 +36,20 @@ const CustomPremiumTable = ({
           </thead>
           <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
             {loading ? (
-               <tr>
-                 <td colSpan="4" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                       <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                       <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
-                    </div>
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="4" className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm font-semibold text-gray-500">Memuat data...</span>
+                  </div>
+                </td>
+              </tr>
             ) : data.length === 0 ? (
-               <tr>
-                 <td colSpan="4" className="px-6 py-20 text-center text-gray-500">
-                    Tidak ada data barang.
-                 </td>
-               </tr>
+              <tr>
+                <td colSpan="4" className="px-6 py-20 text-center text-gray-500">
+                  Tidak ada data barang.
+                </td>
+              </tr>
             ) : (
               data.map((row, index) => (
                 <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
@@ -62,6 +62,7 @@ const CustomPremiumTable = ({
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-2">
+                      <span className="px-2 py-0.5 bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-300 rounded text-[10px] font-bold uppercase">{row.tipe?.nama || '-'}</span>
                       <span className="px-2 py-0.5 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300 rounded text-[10px] font-bold uppercase">{row.jenis?.nama_jenis || '-'}</span>
                       <span className="px-2 py-0.5 bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-300 rounded text-[10px] font-bold uppercase">{row.merk?.nama_merk || '-'}</span>
                     </div>
@@ -84,25 +85,25 @@ const CustomPremiumTable = ({
       </div>
 
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-         <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-            Halaman {currentPage} dari {totalPages || 1}
-         </span>
-         <div className="flex items-center gap-2">
-            <button 
-               disabled={currentPage === 1}
-               onClick={() => setCurrentPage(prev => prev - 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-               disabled={currentPage === totalPages || totalPages === 0}
-               onClick={() => setCurrentPage(prev => prev + 1)}
-               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
-            >
-               <HiChevronRight className="w-5 h-5" />
-            </button>
-         </div>
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+          Halaman {currentPage} dari {totalPages || 1}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <HiChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -116,26 +117,44 @@ function MasterBarang() {
   const [editingId, setEditingId] = useState(null)
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
+  const [itemsPerPage] = useState(10)
+
+  const [selectedOptions, setSelectedOptions] = useState({
+    tipe: null,
+    jenis: null,
+    merk: null
+  })
+
   const [config] = useState(() => UserHelper.axiosConfig())
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
 
   const { register, handleSubmit, reset, control } = useForm({
     defaultValues: {
       nama_brg: '',
+      tipe_id: '',
       jenis_id: '',
-      merk_id: '',
-      satuan_id: ''
+      merk_id: ''
     }
   })
+
+  const loadTipe = useCallback(async (inputValue, callback) => {
+    if (!config) return
+    try {
+      const { data } = await axios.post(`${BaseUrl}/api/master/tipe-barang/cari`,
+        createCariPayload(1, 50, "nama asc", inputValue),
+        config
+      )
+      callback(data.data?.map(t => ({ label: t.nama, value: t.ID })) || [])
+    } catch (e) { console.error(e) }
+  }, [config])
 
   const loadJenis = useCallback(async (inputValue, callback) => {
     if (!config) return
     try {
-      const { data } = await axios.post(`${BaseUrl}/api/master/jenis-barang/cari`, 
-        createCariPayload(1, 50, "nama_jenis asc", inputValue), 
+      const { data } = await axios.post(`${BaseUrl}/api/master/jenis-barang/cari`,
+        createCariPayload(1, 50, "nama_jenis asc", inputValue),
         config
       )
       callback(data.data?.map(j => ({ label: j.nama_jenis, value: j.ID })) || [])
@@ -145,22 +164,11 @@ function MasterBarang() {
   const loadMerk = useCallback(async (inputValue, callback) => {
     if (!config) return
     try {
-      const { data } = await axios.post(`${BaseUrl}/api/master/merk/cari`, 
-        createCariPayload(1, 50, "nama_merk asc", inputValue), 
+      const { data } = await axios.post(`${BaseUrl}/api/master/merk/cari`,
+        createCariPayload(1, 50, "nama_merk asc", inputValue),
         config
       )
       callback(data.data?.map(m => ({ label: m.nama_merk, value: m.ID })) || [])
-    } catch (e) { console.error(e) }
-  }, [config])
-
-  const loadSatuan = useCallback(async (inputValue, callback) => {
-    if (!config) return
-    try {
-      const { data } = await axios.post(`${BaseUrl}/api/master/satuan/cari`, 
-        createCariPayload(1, 50, "nama_satuan asc", inputValue), 
-        config
-      )
-      callback(data.data?.map(s => ({ label: s.nama_satuan, value: s.ID })) || [])
     } catch (e) { console.error(e) }
   }, [config])
 
@@ -169,8 +177,8 @@ function MasterBarang() {
     if (!config) return
     setLoading(true)
     try {
-      const { data } = await axios.post(`${BaseUrl}/api/master/barang/cari`, 
-        createCariPayload(currentPage, itemsPerPage, order, searchVal), 
+      const { data } = await axios.post(`${BaseUrl}/api/master/barang/cari`,
+        createCariPayload(currentPage, itemsPerPage, order, searchVal),
         config
       )
 
@@ -196,18 +204,24 @@ function MasterBarang() {
       setEditingId(item.ID || item.id)
       reset({
         nama_brg: item.nama_brg || '',
+        tipe_id: item.tipe_id || '',
         jenis_id: item.jenis_id || '',
-        merk_id: item.merk_id || '',
-        satuan_id: item.satuan_id || ''
+        merk_id: item.merk_id || ''
+      })
+      setSelectedOptions({
+        tipe: item.tipe ? { label: item.tipe.nama, value: item.tipe.ID } : null,
+        jenis: item.jenis ? { label: item.jenis.nama_jenis, value: item.jenis.ID } : null,
+        merk: item.merk ? { label: item.merk.nama_merk, value: item.merk.ID } : null
       })
     } else {
       setEditingId(null)
       reset({
         nama_brg: '',
+        tipe_id: '',
         jenis_id: '',
-        merk_id: '',
-        satuan_id: ''
+        merk_id: ''
       })
+      setSelectedOptions({ tipe: null, jenis: null, merk: null })
     }
     setIsModalOpen(true)
   }
@@ -216,9 +230,11 @@ function MasterBarang() {
     setIsModalOpen(false)
     reset({
       nama_brg: '',
+      tipe_id: '',
       jenis_id: '',
       merk_id: ''
     })
+    setSelectedOptions({ tipe: null, jenis: null, merk: null })
     setEditingId(null)
   }
 
@@ -227,7 +243,7 @@ function MasterBarang() {
       const url = `${BaseUrl}/api/master/barang/`
       const payload = editingId ? { ...formData, id: editingId } : formData
 
-      const res = editingId 
+      const res = editingId
         ? await axios.put(url, payload, config)
         : await axios.post(url, payload, config)
 
@@ -328,7 +344,7 @@ function MasterBarang() {
           </div>
         </div>
 
-        <CustomPremiumTable 
+        <CustomPremiumTable
           loading={loading}
           data={data}
           currentPage={currentPage}
@@ -363,8 +379,31 @@ function MasterBarang() {
                       />
                     </label>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <label className="block text-sm">
+                      <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Tipe Barang</span>
+                      <div className="mt-2">
+                        <Controller
+                          name="tipe_id"
+                          control={control}
+                          render={({ field }) => (
+                            <AsyncSelect
+                              {...field}
+                              cacheOptions
+                              defaultOptions
+                              loadOptions={loadTipe}
+                              styles={selectStyles}
+                              value={selectedOptions.tipe}
+                              onChange={(opt) => {
+                                setSelectedOptions(prev => ({ ...prev, tipe: opt }))
+                                field.onChange(opt ? opt.value : '')
+                              }}
+                            />
+                          )}
+                        />
+                      </div>
+                    </label>
                     <label className="block text-sm">
                       <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Jenis Barang</span>
                       <div className="mt-2">
@@ -378,8 +417,11 @@ function MasterBarang() {
                               defaultOptions
                               loadOptions={loadJenis}
                               styles={selectStyles}
-                              value={field.value ? { label: "Selected Jenis", value: field.value } : null}
-                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                              value={selectedOptions.jenis}
+                              onChange={(opt) => {
+                                setSelectedOptions(prev => ({ ...prev, jenis: opt }))
+                                field.onChange(opt ? opt.value : '')
+                              }}
                             />
                           )}
                         />
@@ -398,8 +440,11 @@ function MasterBarang() {
                               defaultOptions
                               loadOptions={loadMerk}
                               styles={selectStyles}
-                              value={field.value ? { label: "Selected Merk", value: field.value } : null}
-                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
+                              value={selectedOptions.merk}
+                              onChange={(opt) => {
+                                setSelectedOptions(prev => ({ ...prev, merk: opt }))
+                                field.onChange(opt ? opt.value : '')
+                              }}
                             />
                           )}
                         />
@@ -407,28 +452,7 @@ function MasterBarang() {
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <label className="block text-sm">
-                      <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Satuan</span>
-                      <div className="mt-2">
-                        <Controller
-                          name="satuan_id"
-                          control={control}
-                          render={({ field }) => (
-                            <AsyncSelect
-                              {...field}
-                              cacheOptions
-                              defaultOptions
-                              loadOptions={loadSatuan}
-                              styles={selectStyles}
-                              value={field.value ? { label: "Selected Satuan", value: field.value } : null}
-                              onChange={(opt) => field.onChange(opt ? opt.value : '')}
-                            />
-                          )}
-                        />
-                      </div>
-                    </label>
-                  </div>
+
                 </div>
                 <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 flex justify-end space-x-3 border-t dark:border-gray-700">
                   <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-xl transition-all">Batal</button>

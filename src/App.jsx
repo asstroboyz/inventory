@@ -26,6 +26,8 @@ import Ruangan from './pages/Master/Ruangan'
 import Satuan from './pages/Master/Satuan'
 import Supplier from './pages/Master/Supplier'
 import MasterBarang from './pages/Master/MasterBarang'
+import TipeBarang from './pages/Master/TipeBarang'
+import JenisTransaksi from './pages/Master/JenisTransaksi'
 import Pengadaan from './pages/Transaksi/Pengadaan'
 import Permintaan from './pages/Transaksi/Permintaan'
 import Maintenance from './pages/Maintenance'
@@ -66,6 +68,8 @@ function App() {
           <Route path="/master/satuan" element={<PrivateRoute><Satuan /></PrivateRoute>} />
           <Route path="/master/supplier" element={<PrivateRoute><Supplier /></PrivateRoute>} />
           <Route path="/master/barang" element={<PrivateRoute><MasterBarang /></PrivateRoute>} />
+          <Route path="/master/tipe-barang" element={<PrivateRoute><TipeBarang /></PrivateRoute>} />
+          <Route path="/master/jenis-transaksi" element={<PrivateRoute><JenisTransaksi /></PrivateRoute>} />
           <Route path="/transaksi/pengadaan" element={<PrivateRoute><Pengadaan /></PrivateRoute>} />
           <Route path="/transaksi/permintaan" element={<PrivateRoute><Permintaan /></PrivateRoute>} />
           <Route path="/maintenance" element={<PrivateRoute><Maintenance /></PrivateRoute>} />
