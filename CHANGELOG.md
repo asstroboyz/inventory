@@ -4,6 +4,26 @@ Semua perubahan penting pada bagian antarmuka pengguna (Frontend) akan dicatat d
 
 ---
 
+### **Mei 7, 2026**
+- **Permintaan Barang (Request) Module Overhaul**:
+    - **Aesthetic Expandable Table**: Implementasi baris tabel yang dapat melebar (expand) dengan desain kartu premium untuk melihat detail item barang secara langsung tanpa membuka modal.
+    - **Create Permintaan Feature**: Penambahan fitur pembuatan permintaan barang baru dengan sistem *Multi-Item Detail*.
+    - **Dynamic Row Input**: Implementasi penambahan baris barang secara dinamis pada modal pembuatan permintaan.
+    - **Smart Search Integration**: Penggunaan `AsyncSelect` (dengan pola *Promise return*) untuk pencarian stok barang yang lebih reliabel dan cepat.
+    - **UI/UX Polishing**: 
+        - Penggunaan ikon `FaRegPlusSquare` untuk tombol tambah yang lebih clean.
+        - Perbaikan isu *z-index* dan *menu portal* pada dropdown di dalam modal dan tabel.
+
+### **Mei 6, 2026**
+- **Maintenance Module Synchronization**:
+    - Sinkronisasi frontend dengan struct backend terbaru (`Maintenance_r`).
+    - Pembaruan field data: `tanggal_jadwal`, `tanggal_selesai`, `hasil_servis`, dan penyesuaian status `Pending`.
+    - Perbaikan tampilan `AsyncSelect` agar menampilkan nama aset secara instan setelah dipilih.
+- **Data Fetching Optimization**:
+    - Migrasi seluruh fungsi `loadOptions` pada `AsyncSelect` ke pola *Async/Await Promise* untuk stabilitas rendering di React 19.
+
+---
+
 ### **Mei 3, 2026**
 - **Role-Based Dashboard (RBAC)**:
     - Implementasi tampilan dashboard dinamis berdasarkan peran pengguna (Super Admin, Admin, Kepala BPS, Petugas Pengadaan, dan Staf).

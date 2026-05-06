@@ -23,11 +23,13 @@ const Maintenance = () => {
 
   const [formData, setFormData] = useState({
     inventaris_id: '',
-    tanggal_maintenance: '',
-    jenis_maintenance: '',
+    inventaris_label: '',
+    tanggal_jadwal: '',
+    tanggal_selesai: '',
     biaya: 0,
     keterangan: '',
-    status: 'Scheduled'
+    hasil_servis: '',
+    status: 'Pending'
   })
 
   const fetchData = useCallback(async () => {
@@ -60,7 +62,7 @@ const Maintenance = () => {
 
 
 
-  const loadInventaris = async (inputValue, callback) => {
+  const loadInventaris = async (inputValue) => {
     try {
       const res = await fetch(`${BaseUrl}/api/record/inventaris/cari`, {
         method: 'POST',
@@ -69,12 +71,16 @@ const Maintenance = () => {
       })
       const result = await res.json()
       if (res.ok) {
-        callback(result.data?.map(i => ({ 
+        return result.data?.map(i => ({ 
           label: `${i.kode_inventaris} - ${i.master_detail?.master_data?.nama_brg || ''}`, 
           value: i.ID 
-        })) || [])
+        })) || []
       }
-    } catch (e) { console.error(e) }
+      return []
+    } catch (e) { 
+      console.error(e) 
+      return []
+    }
   }
 
   useEffect(() => {
@@ -95,21 +101,25 @@ const Maintenance = () => {
       setEditingId(item.ID || item.id)
       setFormData({
         inventaris_id: item.inventaris_id || '',
-        tanggal_maintenance: item.tanggal_maintenance || '',
-        jenis_maintenance: item.jenis_maintenance || '',
+        inventaris_label: item.inventaris ? `${item.inventaris.kode_inventaris} - ${item.inventaris.master_barang?.nama_brg || ''}` : '',
+        tanggal_jadwal: item.tanggal_jadwal || '',
+        tanggal_selesai: item.tanggal_selesai || '',
         biaya: item.biaya || 0,
         keterangan: item.keterangan || '',
-        status: item.status || 'Scheduled'
+        hasil_servis: item.hasil_servis || '',
+        status: item.status || 'Pending'
       })
     } else {
       setEditingId(null)
       setFormData({
         inventaris_id: '',
-        tanggal_maintenance: new Date().toISOString().split('T')[0],
-        jenis_maintenance: '',
+        inventaris_label: '',
+        tanggal_jadwal: new Date().toISOString().split('T')[0],
+        tanggal_selesai: '',
         biaya: 0,
         keterangan: '',
-        status: 'Scheduled'
+        hasil_servis: '',
+        status: 'Pending'
       })
     }
     setIsModalOpen(true)
@@ -198,11 +208,11 @@ const Maintenance = () => {
                           <span className="text-[10px] text-purple-600">{row.inventaris?.kode_inventaris || '-'}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm">{row.tanggal_maintenance}</td>
+                      <td className="px-6 py-4 text-sm">{row.tanggal_jadwal}</td>
                       <td className="px-6 py-4 text-sm font-mono font-bold text-green-600">Rp {new Intl.NumberFormat('id-ID').format(row.biaya || 0)}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${
-                          row.status === 'Completed' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                          row.status === 'Completed' ? 'bg-green-50 text-green-700' : row.status === 'Pending' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'
                         }`}>
                           {row.status}
                         </span>
@@ -241,29 +251,34 @@ const Maintenance = () => {
                     placeholder="Cari Asset..."
                     className="mt-2"
                     classNamePrefix="select"
-                    onChange={(opt) => setFormData({ ...formData, inventaris_id: opt?.value })}
-                    value={formData.inventaris_id ? { label: "Selected Asset", value: formData.inventaris_id } : null}
+                    menuPortalTarget={document.body}
+                    styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                    onChange={(opt) => setFormData({ ...formData, inventaris_id: opt?.value, inventaris_label: opt?.label })}
+                    value={formData.inventaris_id ? { label: formData.inventaris_label || "Asset Terpilih", value: formData.inventaris_id } : null}
                   />
                 </div>
 
-                <label className="block text-sm"><span className="font-bold text-[10px] uppercase">Tanggal</span>
-                  <input name="tanggal_maintenance" type="date" required className="form-input mt-2" value={formData.tanggal_maintenance} onChange={handleInputChange} />
+                <label className="block text-sm"><span className="font-bold text-[10px] uppercase text-gray-500">Tanggal Jadwal</span>
+                  <input name="tanggal_jadwal" type="date" required className="form-input mt-2" value={formData.tanggal_jadwal} onChange={handleInputChange} />
                 </label>
-                <label className="block text-sm"><span className="font-bold text-[10px] uppercase">Jenis</span>
-                  <input name="jenis_maintenance" required className="form-input mt-2" value={formData.jenis_maintenance} onChange={handleInputChange} />
+                <label className="block text-sm"><span className="font-bold text-[10px] uppercase text-gray-500">Tanggal Selesai</span>
+                  <input name="tanggal_selesai" type="date" className="form-input mt-2" value={formData.tanggal_selesai} onChange={handleInputChange} />
                 </label>
-                <label className="block text-sm"><span className="font-bold text-[10px] uppercase">Biaya (Rp)</span>
+                <label className="block text-sm"><span className="font-bold text-[10px] uppercase text-gray-500">Biaya (Rp)</span>
                   <input name="biaya" type="number" required className="form-input mt-2" value={formData.biaya} onChange={handleInputChange} />
                 </label>
-                <label className="block text-sm"><span className="font-bold text-[10px] uppercase">Status</span>
+                <label className="block text-sm"><span className="font-bold text-[10px] uppercase text-gray-500">Status</span>
                   <select name="status" className="form-input mt-2" value={formData.status} onChange={handleInputChange}>
-                    <option value="Scheduled">Scheduled</option>
+                    <option value="Pending">Pending</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </label>
-                <label className="block text-sm md:col-span-2"><span className="font-bold text-[10px] uppercase">Keterangan</span>
-                  <textarea name="keterangan" className="form-input mt-2 h-24 resize-none" value={formData.keterangan} onChange={handleInputChange} />
+                <label className="block text-sm md:col-span-2"><span className="font-bold text-[10px] uppercase text-gray-500">Keterangan</span>
+                  <textarea name="keterangan" className="form-input mt-2 h-20 resize-none" value={formData.keterangan} onChange={handleInputChange} />
+                </label>
+                <label className="block text-sm md:col-span-2"><span className="font-bold text-[10px] uppercase text-gray-500">Hasil Servis</span>
+                  <textarea name="hasil_servis" className="form-input mt-2 h-20 resize-none" value={formData.hasil_servis} onChange={handleInputChange} />
                 </label>
                 <div className="md:col-span-2 flex justify-end space-x-3 mt-4">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-500">Batal</button>

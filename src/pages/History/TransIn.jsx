@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiArrowDown, HiSearch, HiChevronLeft, HiChevronRight, HiCalendar, HiInformationCircle } from 'react-icons/hi'
+import { HiArrowDown, HiSearch, HiChevronLeft, HiChevronRight, HiCalendar, HiInformationCircle, HiUser, HiHashtag, HiClipboardList, HiChevronDown, HiChevronUp, HiViewGrid } from 'react-icons/hi'
 
 const TransIn = () => {
   const [data, setData] = useState([])
@@ -11,6 +11,7 @@ const TransIn = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const [expandedId, setExpandedId] = useState(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -37,7 +38,8 @@ const TransIn = () => {
 
   const filteredData = useMemo(() => {
     return data.filter(item =>
-      (item.informasi_tambahan || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (item.no_referensi || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.keterangan || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [data, searchTerm])
 
@@ -48,6 +50,22 @@ const TransIn = () => {
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const toggleExpand = (id) => {
+    setExpandedId(expandedId === id ? null : id)
+  }
+
   return (
     <Layout>
       <div className="container px-6 mx-auto grid pb-8">
@@ -57,15 +75,15 @@ const TransIn = () => {
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl">
                 <HiArrowDown className="text-green-600 w-6 h-6" />
               </div>
-              History Trans In
+              Riwayat Barang Masuk
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-11 italic">Log riwayat penambahan stok barang ke sistem.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-11 italic">Log riwayat penambahan stok barang ke sistem secara kolektif.</p>
           </div>
           <div className="relative w-full sm:w-80">
             <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Cari keterangan..."
+              placeholder="Cari No. Referensi atau Keterangan..."
               className="w-full pl-12 pr-4 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-green-500/20 transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => {
@@ -76,57 +94,130 @@ const TransIn = () => {
           </div>
         </div>
 
-        <div className="w-full overflow-hidden rounded-3xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+        <div className="w-full overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
           <div className="overflow-x-auto">
             <table className="w-full whitespace-no-wrap">
               <thead>
-                <tr className="text-xs font-bold tracking-wide text-left text-gray-500 uppercase border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
-                  <th className="px-6 py-5 text-center w-16">No</th>
-                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiCalendar className="w-4 h-4" /> Tanggal</div></th>
-                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiInformationCircle className="w-4 h-4" /> Keterangan</div></th>
-                  <th className="px-6 py-5 text-right">Jumlah Masuk</th>
-                  <th className="px-6 py-5 text-right">Saldo Akhir</th>
+                <tr className="text-[10px] font-bold tracking-widest text-left text-gray-500 uppercase border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                  <th className="px-6 py-5 text-center w-12"></th>
+                  <th className="px-6 py-5 w-16 text-center">No</th>
+                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiHashtag className="w-4 h-4 text-green-500" /> No. Referensi</div></th>
+                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiCalendar className="w-4 h-4 text-green-500" /> Tanggal</div></th>
+                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiInformationCircle className="w-4 h-4 text-green-500" /> Keterangan</div></th>
+                  <th className="px-6 py-5"><div className="flex items-center gap-2"><HiUser className="w-4 h-4 text-green-500" /> Petugas</div></th>
+                  <th className="px-6 py-5 text-right"><div className="flex items-center justify-end gap-2"><HiClipboardList className="w-4 h-4 text-green-500" /> Total Item</div></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-20 text-center">
+                    <td colSpan="7" className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-sm text-gray-500 animate-pulse">Menghubungkan ke server...</span>
+                        <span className="text-sm text-gray-500 animate-pulse font-medium">Memuat riwayat transaksi...</span>
                       </div>
                     </td>
                   </tr>
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-20 text-center">
-                      <div className="flex flex-col items-center gap-2 opacity-40">
-                        <HiSearch className="w-12 h-12 text-gray-300" />
-                        <span className="text-sm font-medium text-gray-500">Data tidak ditemukan</span>
+                    <td colSpan="7" className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center gap-4 opacity-40">
+                        <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
+                          <HiSearch className="w-10 h-10 text-gray-400" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-500">Data tidak ditemukan</span>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   paginatedData.map((row, index) => (
-                    <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors group">
-                      <td className="px-6 py-4 text-sm text-center font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="px-6 py-4 text-sm font-semibold">
-                        {row.tanggal_barang_masuk || row.CreatedAt?.split('T')[0]}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-800 dark:text-gray-200">{row.informasi_tambahan || 'Restock Barang'}</span>
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono tracking-widest uppercase">REF-LOG-{row.ID}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-green-600 dark:text-green-400">
-                        <span className="bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded-lg">+{row.jumlah_perubahan}</span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-gray-100 font-mono">
-                        {row.stok}
-                      </td>
-                    </tr>
+                    <Fragment key={row.ID || index}>
+                      <tr
+                        onClick={() => toggleExpand(row.ID)}
+                        className={`text-gray-700 dark:text-gray-400 hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors group cursor-pointer ${expandedId === row.ID ? 'bg-green-50/30 dark:bg-green-900/10' : ''}`}
+                      >
+                        <td className="px-6 py-4 text-center">
+                          {expandedId === row.ID ? <HiChevronUp className="w-5 h-5 text-green-600 animate-bounce-subtle" /> : <HiChevronDown className="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" />}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center font-mono">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold font-mono tracking-wider border border-blue-100 dark:border-blue-800">
+                            {row.no_referensi}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-300">
+                          {formatDate(row.tanggal || row.CreatedAt)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col max-w-xs">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 truncate">{row.keterangan || 'Tanpa Keterangan'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-[10px] font-bold text-green-600">
+                              {row.user?.nama?.charAt(0) || 'U'}
+                            </div>
+                            <span className="text-sm font-semibold">{row.user?.nama || 'System'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full font-bold text-xs">
+                            {row.items?.length || 0} Barang
+                          </span>
+                        </td>
+                      </tr>
+                      {expandedId === row.ID && (
+                        <tr>
+                          <td colSpan="7" className="p-0 border-none">
+                            <div className="px-12 py-6 bg-gray-50/50 dark:bg-gray-900/40 border-y border-gray-100 dark:border-gray-700 animate-slide-down">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-1.5 bg-green-100 dark:bg-green-900/40 rounded-lg text-green-600">
+                                  <HiViewGrid className="w-4 h-4" />
+                                </div>
+                                <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Detail Item Transaksi</h4>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {(row.items || []).map((item, itIdx) => (
+                                  <div key={item.ID || itIdx} className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                      <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 font-mono tracking-tighter uppercase mb-0.5">
+                                          {item.barang?.master_barang?.kode_brg || 'BRG-000'}
+                                        </span>
+                                        <span className="font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                                          {item.barang?.master_barang?.nama_brg || 'Nama Barang'}
+                                        </span>
+                                      </div>
+                                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                                        {item.barang?.satuan?.nama_satuan || 'Pcs'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between border-t border-gray-50 dark:border-gray-700 pt-3">
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Jumlah</span>
+                                        <span className="text-lg font-black text-green-600 dark:text-green-400">+{item.jumlah}</span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex flex-col items-end">
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Sblm</span>
+                                          <span className="text-sm font-bold text-gray-500">{item.stok_sebelum}</span>
+                                        </div>
+                                        <div className="h-8 w-px bg-gray-100 dark:bg-gray-700"></div>
+                                        <div className="flex flex-col items-end">
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Ssdh</span>
+                                          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{item.stok_sesudah}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))
                 )}
               </tbody>
@@ -136,19 +227,19 @@ const TransIn = () => {
           {/* Pagination */}
           {!loading && totalPages > 1 && (
             <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <span className="text-xs font-semibold text-gray-500 uppercase">Halaman {currentPage} dari {totalPages}</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Halaman {currentPage} dari {totalPages}</span>
               <div className="flex items-center gap-2">
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-all"
+                  className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-all shadow-sm"
                 >
                   <HiChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-all"
+                  className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-all shadow-sm"
                 >
                   <HiChevronRight className="w-5 h-5" />
                 </button>
@@ -157,8 +248,27 @@ const TransIn = () => {
           )}
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes slide-down {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out forwards;
+        }
+        @keyframes bounce-subtle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        .animate-bounce-subtle {
+          animation: bounce-subtle 2s infinite ease-in-out;
+        }
+      `}} />
     </Layout>
   )
 }
 
 export default TransIn
+
+

@@ -6,7 +6,7 @@ import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX, HiDuplicate } from 'react-icons/hi'
+import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX, } from 'react-icons/hi'
 
 // ---------------------------------------------------------------------------
 // Shared AsyncSelect styles
@@ -212,6 +212,19 @@ function StokBarang() {
     name: 'items',
   })
 
+  const watchItems = watch('items') || []
+
+  // Helper to check for duplicate barang-satuan combination in bulk mode
+  const isDuplicateCombination = (barangId, satuanId, currentIndex) => {
+    if (!barangId || !satuanId) return false
+    return watchItems.some((item, idx) => {
+      if (idx === currentIndex) return false
+      const bId = item.master_barang_id?.value || item.master_barang_id
+      const sId = item.satuan_id?.value || item.satuan_id
+      return bId === barangId && sId === satuanId
+    })
+  }
+
   // -------------------------------------------------------------------------
   // Data fetching
   // -------------------------------------------------------------------------
@@ -337,10 +350,21 @@ function StokBarang() {
           stok: parseInt(row.stok) || 0,
         }))
 
+        // Final duplicate check
+        const seen = new Set()
+        for (const it of items) {
+          const key = `${it.master_barang_id}-${it.satuan_id}`
+          if (seen.has(key)) {
+            toast.error('Ada duplikasi barang dan satuan dalam daftar')
+            return
+          }
+          seen.add(key)
+        }
+
         const res = await fetch(`${BaseUrl}/api/record/barang/multiple-product`, {
           method: 'POST',
           headers: UserHelper.jsonHeader(),
-          body: JSON.stringify({ items })
+          body: JSON.stringify(items)
         })
         const result = await res.json()
         if (res.ok) {
@@ -495,7 +519,14 @@ function StokBarang() {
                                   placeholder="Cari Barang..."
                                   styles={selectStyles}
                                   value={f.value}
-                                  onChange={(opt) => f.onChange(opt)}
+                                  onChange={(opt) => {
+                                    const currentSatuanId = watchItems[index].satuan_id?.value || watchItems[index].satuan_id
+                                    if (isDuplicateCombination(opt?.value, currentSatuanId, index)) {
+                                      toast.error('Barang dengan satuan ini sudah ada di baris lain')
+                                      return
+                                    }
+                                    f.onChange(opt)
+                                  }}
                                   menuPortalTarget={document.body}
                                   menuPosition="fixed"
                                   menuPlacement="auto"
@@ -525,7 +556,14 @@ function StokBarang() {
                                   placeholder="Satuan..."
                                   styles={selectStyles}
                                   value={f.value}
-                                  onChange={(opt) => f.onChange(opt)}
+                                  onChange={(opt) => {
+                                    const currentBarangId = watchItems[index].master_barang_id?.value || watchItems[index].master_barang_id
+                                    if (isDuplicateCombination(currentBarangId, opt?.value, index)) {
+                                      toast.error('Barang dengan satuan ini sudah ada di baris lain')
+                                      return
+                                    }
+                                    f.onChange(opt)
+                                  }}
                                 />
                               )}
                             />
