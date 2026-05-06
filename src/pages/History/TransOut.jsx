@@ -15,7 +15,7 @@ const TransOut = () => {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/record/history/out/`, {
+      const res = await fetch(`${BaseUrl}/api/record/trans-out/`, {
         headers: UserHelper.authHeader()
       })
       const result = await res.json()

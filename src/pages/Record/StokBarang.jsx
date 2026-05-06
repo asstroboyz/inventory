@@ -1,16 +1,91 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import AsyncSelect from 'react-select/async'
 
 import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX } from 'react-icons/hi'
+import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX, HiDuplicate } from 'react-icons/hi'
 
-/**
- * Premium Table for Stok Barang (ATK)
- */
+// ---------------------------------------------------------------------------
+// Shared AsyncSelect styles
+// ---------------------------------------------------------------------------
+const buildSelectStyles = () => ({
+  control: (base, state) => ({
+    ...base,
+    backgroundColor: "transparent",
+    borderColor: state.isFocused
+      ? "#3b82f6"
+      : document.documentElement.classList.contains("dark")
+        ? "#4b5563"
+        : "#e5e7eb",
+    borderRadius: "0.75rem",
+    padding: "0.1rem",
+    boxShadow: state.isFocused ? "0 0 0 4px rgba(59, 130, 246, 0.1)" : "none",
+    "&:hover": {
+      borderColor: "#3b82f6",
+    },
+  }),
+
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 99999,
+  }),
+
+  menu: (base) => ({
+    ...base,
+    backgroundColor: document.documentElement.classList.contains("dark")
+      ? "#1f2937"
+      : "#ffffff",
+    borderRadius: "0.75rem",
+    overflow: "hidden",
+    border: "1px solid",
+    borderColor: document.documentElement.classList.contains("dark")
+      ? "#374151"
+      : "#e5e7eb",
+    zIndex: 99999,
+  }),
+
+  menuList: (base) => ({
+    ...base,
+    maxHeight: 220,
+    padding: 4,
+  }),
+
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected
+      ? "#3b82f6"
+      : state.isFocused
+        ? document.documentElement.classList.contains("dark")
+          ? "#374151"
+          : "#f3f4f6"
+        : "transparent",
+    color: state.isSelected
+      ? "#ffffff"
+      : document.documentElement.classList.contains("dark")
+        ? "#e5e7eb"
+        : "#1f2937",
+    cursor: "pointer",
+    fontSize: "0.875rem",
+  }),
+
+  singleValue: (base) => ({
+    ...base,
+    color: document.documentElement.classList.contains("dark") ? "#e5e7eb" : "#1f2937",
+    fontSize: "0.875rem",
+  }),
+
+  placeholder: (base) => ({
+    ...base,
+    color: "#9ca3af",
+    fontSize: "0.875rem",
+  }),
+});
+// ---------------------------------------------------------------------------
+// Premium Table
+// ---------------------------------------------------------------------------
 const CustomPremiumTable = ({
   loading,
   data,
@@ -94,6 +169,22 @@ const CustomPremiumTable = ({
   )
 }
 
+// ---------------------------------------------------------------------------
+// Default values
+// ---------------------------------------------------------------------------
+const defaultItem = () => ({
+  master_barang_id: null,   // will store { label, value } object for AsyncSelect
+  satuan_id: null,          // same
+  stok: 0,
+})
+
+const defaultBulkValues = () => ({
+  items: [defaultItem()],
+})
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 function StokBarang() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -107,156 +198,158 @@ function StokBarang() {
   const [totalItems, setTotalItems] = useState(0)
   const [order] = useState("id desc")
 
-  const { register, handleSubmit, reset, control } = useForm({
-    defaultValues: {
-      master_barang_id: '',
-      satuan_id: '',
-      stok: 0,
-      tanggal_masuk: '',
-      jenis_transaksi: 'Initial Stock'
-    }
+  const selectStyles = buildSelectStyles()
+
+  // -------------------------------------------------------------------------
+  // Form — useFieldArray for bulk mode; same form used for edit (fields[0])
+  // -------------------------------------------------------------------------
+  const { register, handleSubmit, reset, control, watch } = useForm({
+    defaultValues: defaultBulkValues()
   })
 
-  const selectStyles = {
-    control: (base, state) => ({
-      ...base,
-      backgroundColor: 'transparent',
-      borderColor: state.isFocused ? '#3b82f6' : document.documentElement.classList.contains('dark') ? '#4b5563' : '#e5e7eb',
-      borderRadius: '1rem',
-      padding: '0.2rem',
-      boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.1)' : 'none',
-      '&:hover': { borderColor: '#3b82f6' }
-    }),
-    menu: (base) => ({
-      ...base,
-      backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
-      borderRadius: '1rem',
-      overflow: 'hidden',
-      border: '1px solid',
-      borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb',
-      zIndex: 9999
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? (document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6') : 'transparent',
-      color: state.isSelected ? '#ffffff' : (document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937'),
-      cursor: 'pointer'
-    }),
-    singleValue: base => ({ ...base, color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937' }),
-    placeholder: base => ({ ...base, color: '#9ca3af', fontSize: '0.875rem' })
-  }
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'items',
+  })
 
-  const fetchData = useCallback(async () => {
+  // -------------------------------------------------------------------------
+  // Data fetching
+  // -------------------------------------------------------------------------
+  const fetchData = useCallback(() => {
     setLoading(true)
-    try {
-      const res = await fetch(`${BaseUrl}/api/record/barang/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({
-          limit: itemsPerPage.toString(),
-          page: currentPage.toString(),
-          order: order,
-          search: searchTerm || null
-        })
+    fetch(`${BaseUrl}/api/record/barang/cari`, {
+      method: 'POST',
+      headers: UserHelper.jsonHeader(),
+      body: JSON.stringify({
+        limit: itemsPerPage.toString(),
+        page: currentPage.toString(),
+        order: order,
+        search: searchTerm || null
       })
-      const result = await res.json()
-      if (res.ok) {
-        setData(result.data || [])
-        setTotalItems(result.total || 0)
-      } else {
-        toast.error(result.message || 'Gagal mengambil data')
-      }
-    } catch {
-      toast.error('Koneksi ke server terputus')
-    } finally {
-      setLoading(false)
-    }
+    })
+      .then(res => res.json().then(result => ({ ok: res.ok, result })))
+      .then(({ ok, result }) => {
+        if (ok) {
+          setData(result.data || [])
+          setTotalItems(result.total || 0)
+        } else {
+          toast.error(result.message || 'Gagal mengambil data')
+        }
+      })
+      .catch(() => {
+        toast.error('Koneksi ke server terputus')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [currentPage, itemsPerPage, searchTerm, order])
 
-
-  const loadBarang = async (inputValue, callback) => {
-    try {
-      const res = await fetch(`${BaseUrl}/api/master/barang/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_brg asc" })
+  const loadBarang = (inputValue, callback) => {
+    fetch(`${BaseUrl}/api/master/barang/cari`, {
+      method: 'POST',
+      headers: UserHelper.jsonHeader(),
+      body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_brg asc", tipe_id: 2 })
+    })
+      .then(res => res.json())
+      .then(result => {
+        const data = Array.isArray(result) ? result : (result?.data || []);
+        callback(data.map(m => ({ label: `${m.nama_brg} (${m.kode_brg})`, value: m.ID })));
       })
-      const result = await res.json()
-      if (res.ok) {
-        callback(result.data?.map(m => ({ label: `${m.nama_brg} (${m.kode_brg})`, value: m.ID })) || [])
-      }
-    } catch (e) { console.error(e) }
+      .catch(e => { console.error(e); callback([]); })
   }
 
-  const loadSatuan = async (inputValue, callback) => {
-    try {
-      const res = await fetch(`${BaseUrl}/api/master/satuan/cari`, {
-        method: 'POST',
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_satuan asc" })
+  const loadSatuan = (inputValue, callback) => {
+    fetch(`${BaseUrl}/api/master/satuan/cari`, {
+      method: 'POST',
+      headers: UserHelper.jsonHeader(),
+      body: JSON.stringify({ search: inputValue, limit: "50", page: "1", order: "nama_satuan asc" })
+    })
+      .then(res => res.json())
+      .then(result => {
+        const data = Array.isArray(result) ? result : (result?.data || []);
+        callback(data.map(s => ({ label: s.nama_satuan, value: s.ID })));
       })
-      const result = await res.json()
-      if (res.ok) {
-        callback(result.data?.map(s => ({ label: s.nama_satuan, value: s.ID })) || [])
-      }
-    } catch (e) { console.error(e) }
+      .catch(e => { console.error(e); callback([]); })
   }
 
   useEffect(() => {
     Promise.resolve().then(() => fetchData())
   }, [fetchData])
 
+  // -------------------------------------------------------------------------
+  // Modal helpers
+  // -------------------------------------------------------------------------
   const openModal = (item = null) => {
     if (item) {
+      // Edit mode — single item, prefill fields[0]
       setEditingId(item.ID || item.id)
       reset({
-        master_barang_id: item.master_barang_id || '',
-        satuan_id: item.satuan_id || '',
-        stok: item.stok || 0,
-        tanggal_masuk: item.tanggal_masuk ? new Date(item.tanggal_masuk).toISOString().split('T')[0] : '',
-        jenis_transaksi: item.jenis_transaksi || 'Update Stock'
+        items: [{
+          master_barang_id: item.master_barang_id
+            ? { label: item.master_barang?.nama_brg ? `${item.master_barang.nama_brg} (${item.master_barang.kode_brg})` : 'Item Terpilih', value: item.master_barang_id }
+            : null,
+          satuan_id: item.satuan_id
+            ? { label: item.satuan?.nama_satuan || 'Satuan Terpilih', value: item.satuan_id }
+            : null,
+          stok: item.stok || 0,
+        }]
       })
     } else {
+      // Add mode — fresh bulk form
       setEditingId(null)
-      reset({
-        master_barang_id: '',
-        satuan_id: '',
-        stok: 0,
-        tanggal_masuk: new Date().toISOString().split('T')[0],
-        jenis_transaksi: 'Initial Stock'
-      })
+      reset(defaultBulkValues())
     }
     setIsModalOpen(true)
   }
 
+  // -------------------------------------------------------------------------
+  // Submit
+  // -------------------------------------------------------------------------
   const onFormSubmit = async (formData) => {
     try {
-      const url = `${BaseUrl}/api/record/barang/`
-      const method = editingId ? 'PUT' : 'POST'
-
-      // Ensure numeric fields are numbers
-      const formattedData = {
-        ...formData,
-        stok: parseInt(formData.stok) || 0,
-        master_barang_id: parseInt(formData.master_barang_id) || 0,
-        satuan_id: parseInt(formData.satuan_id) || 0
-      }
-
-      const payload = editingId ? { ...formattedData, id: parseInt(editingId) } : formattedData
-
-      const res = await fetch(url, {
-        method,
-        headers: UserHelper.jsonHeader(),
-        body: JSON.stringify(payload)
-      })
-
-      const result = await res.json()
-      if (res.ok) {
-        toast.success(editingId ? 'Data stok diperbarui!' : 'Stok barang ditambahkan!')
-        setIsModalOpen(false)
-        fetchData()
+      if (editingId) {
+        // ---- EDIT single item ----
+        const row = formData.items[0]
+        const payload = {
+          id: parseInt(editingId),
+          master_barang_id: parseInt(row.master_barang_id?.value || row.master_barang_id) || 0,
+          satuan_id: parseInt(row.satuan_id?.value || row.satuan_id) || 0,
+          stok: parseInt(row.stok) || 0,
+        }
+        const res = await fetch(`${BaseUrl}/api/record/barang/`, {
+          method: 'PUT',
+          headers: UserHelper.jsonHeader(),
+          body: JSON.stringify(payload)
+        })
+        const result = await res.json()
+        if (res.ok) {
+          toast.success('Data stok diperbarui!')
+          setIsModalOpen(false)
+          fetchData()
+        } else {
+          toast.error(result.message || 'Gagal menyimpan data')
+        }
       } else {
-        toast.error(result.message || 'Gagal menyimpan data')
+        // ---- BULK INSERT multiple items ----
+        const items = formData.items.map(row => ({
+          master_barang_id: parseInt(row.master_barang_id?.value || row.master_barang_id) || 0,
+          satuan_id: parseInt(row.satuan_id?.value || row.satuan_id) || 0,
+          stok: parseInt(row.stok) || 0,
+        }))
+
+        const res = await fetch(`${BaseUrl}/api/record/barang/multiple-product`, {
+          method: 'POST',
+          headers: UserHelper.jsonHeader(),
+          body: JSON.stringify({ items })
+        })
+        const result = await res.json()
+        if (res.ok) {
+          toast.success(`${items.length} item stok berhasil ditambahkan!`)
+          setIsModalOpen(false)
+          fetchData()
+        } else {
+          toast.error(result.message || 'Gagal menyimpan data')
+        }
       }
     } catch {
       toast.error('Terjadi kesalahan sistem')
@@ -281,6 +374,9 @@ function StokBarang() {
 
   const totalPages = Math.ceil(totalItems / itemsPerPage)
 
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
   return (
     <Layout>
       <div className="container px-6 mx-auto grid pb-8">
@@ -304,8 +400,8 @@ function StokBarang() {
                 className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl outline-none"
                 value={searchTerm}
                 onChange={(e) => {
-                   setSearchTerm(e.target.value)
-                   setCurrentPage(1)
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
                 }}
               />
             </div>
@@ -330,94 +426,162 @@ function StokBarang() {
           onDelete={handleDelete}
         />
 
-        {/* Modal Form */}
+        {/* ================================================================
+            Modal Form
+        ================================================================ */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-xl bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-white/10">
-              <header className="px-8 py-6 border-b dark:border-gray-700 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{editingId ? 'Update Stok Barang' : 'Tambah Stok Baru'}</h3>
+            <div className="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-white/10 flex flex-col max-h-[90vh]">
+
+              {/* Header */}
+              <header className="px-8 py-5 border-b dark:border-gray-700 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                    {editingId ? 'Update Stok Barang' : 'Tambah Stok Baru'}
+                  </h3>
+                  {!editingId && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Tambahkan beberapa barang sekaligus dalam satu transaksi.
+                    </p>
+                  )}
+                </div>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-red-500 rounded-full transition-all">
                   <HiX className="w-6 h-6" />
                 </button>
               </header>
-              <form onSubmit={handleSubmit(onFormSubmit)}>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="block text-sm md:col-span-2">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Barang (Catalog)</span>
-                    <div className="mt-2">
-                       <Controller
-                         name="master_barang_id"
-                         control={control}
-                         render={({ field }) => (
-                           <AsyncSelect
-                             {...field}
-                             cacheOptions
-                             defaultOptions
-                             loadOptions={loadBarang}
-                             placeholder="Cari Barang..."
-                             classNamePrefix="select"
-                             styles={selectStyles}
-                             value={field.value ? { label: "Item Terpilih", value: field.value } : null}
-                             onChange={(opt) => field.onChange(opt ? opt.value : '')}
-                           />
-                         )}
-                       />
-                    </div>
-                  </div>
-                  <div className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Satuan</span>
-                    <div className="mt-2">
-                       <Controller
-                         name="satuan_id"
-                         control={control}
-                         render={({ field }) => (
-                           <AsyncSelect
-                             {...field}
-                             cacheOptions
-                             defaultOptions
-                             loadOptions={loadSatuan}
-                             placeholder="Cari Satuan..."
-                             classNamePrefix="select"
-                             styles={selectStyles}
-                             value={field.value ? { label: "Satuan Terpilih", value: field.value } : null}
-                             onChange={(opt) => field.onChange(opt ? opt.value : '')}
-                           />
-                         )}
-                       />
-                    </div>
-                  </div>
 
-                  <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Stok</span>
-                    <input
-                      {...register('stok', { required: true })}
-                      type="number"
-                      placeholder="0"
-                      className="form-input mt-2"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Tanggal</span>
-                    <input
-                      {...register('tanggal_masuk', { required: true })}
-                      type="date"
-                      className="form-input mt-2"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px]">Jenis Transaksi</span>
-                    <input
-                      {...register('jenis_transaksi')}
-                      placeholder="Contoh: Stok Awal"
-                      className="form-input mt-2"
-                    />
-                  </label>
+              <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col flex-1 overflow-hidden">
+
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4">
+                  {!editingId && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => append(defaultItem())}
+                        className="p-3 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-2xl hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all shadow-sm"
+                        title="Tambah Baris"
+                      >
+                        <HiPlus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        className="relative grid grid-cols-[minmax(0,0.85fr)_220px_120px_44px] items-end gap-3 p-4 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700"
+                      >
+                        <span className="absolute -top-2.5 -left-2.5 w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shadow">
+                          {index + 1}
+                        </span>
+
+                        <div className="min-w-0">
+                          <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-wider">
+                            Barang (Catalog)
+                          </span>
+                          <div className="mt-1.5">
+                            <Controller
+                              name={`items.${index}.master_barang_id`}
+                              control={control}
+                              rules={{ required: true }}
+                              render={({ field: f }) => (
+                                <AsyncSelect
+                                  {...f}
+                                  cacheOptions
+                                  defaultOptions
+                                  loadOptions={loadBarang}
+                                  placeholder="Cari Barang..."
+                                  styles={selectStyles}
+                                  value={f.value}
+                                  onChange={(opt) => f.onChange(opt)}
+                                  menuPortalTarget={document.body}
+                                  menuPosition="fixed"
+                                  menuPlacement="auto"
+                                  noOptionsMessage={() => "Barang tidak ditemukan"}
+                                  loadingMessage={() => "Mencari barang..."}
+                                />
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-wider">
+                            Satuan
+                          </span>
+                          <div className="mt-1.5">
+                            <Controller
+                              name={`items.${index}.satuan_id`}
+                              control={control}
+                              rules={{ required: true }}
+                              render={({ field: f }) => (
+                                <AsyncSelect
+                                  {...f}
+                                  defaultOptions={false}
+                                  menuPortalTarget={document.body}
+                                  loadOptions={loadSatuan}
+                                  placeholder="Satuan..."
+                                  styles={selectStyles}
+                                  value={f.value}
+                                  onChange={(opt) => f.onChange(opt)}
+                                />
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-wider">
+                            Stok
+                          </span>
+                          <input
+                            {...register(`items.${index}.stok`, { required: true, min: 0 })}
+                            type="number"
+                            placeholder="0"
+                            min={0}
+                            className="form-input mt-1.5"
+                          />
+                        </div>
+
+                        <div className="flex justify-center pb-1">
+                          {!editingId && fields.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => remove(index)}
+                              className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all"
+                              title="Hapus baris ini"
+                            >
+                              <HiTrash className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 flex justify-end space-x-3 border-t dark:border-gray-700">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all">Batal</button>
-                  <button type="submit" className="px-8 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg active:scale-95 transition-all">
-                    Simpan
-                  </button>
+
+                {/* Footer */}
+                <footer className="px-8 py-5 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center border-t dark:border-gray-700 shrink-0">
+                  <span className="text-xs text-gray-400">
+                    {!editingId && `${fields.length} item akan disimpan`}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-8 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg active:scale-95 transition-all"
+                    >
+                      {editingId ? 'Simpan Perubahan' : `Simpan ${fields.length > 1 ? `(${fields.length} Item)` : ''}`}
+                    </button>
+                  </div>
                 </footer>
               </form>
             </div>
@@ -429,4 +593,3 @@ function StokBarang() {
 }
 
 export default StokBarang
-
