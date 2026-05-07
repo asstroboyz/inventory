@@ -25,9 +25,9 @@ function Profile() {
 
   // --- Profile Logic ---
   const [formData, setFormData] = useState({
-    nickname: user?.nickname || '',
-    first_name: user?.first_name || '',
-    last_name: user?.last_name || '',
+    username: user?.username || '',
+    nama_depan: user?.nama_depan || '',
+    nama_belakang: user?.nama_belakang || '',
     email: user?.email || '',
     phone: user?.phone || '',
     status: user?.status || 'active',
@@ -59,9 +59,9 @@ function Profile() {
     try {
       const data = new FormData()
       data.append('id', user.ID || user.id || 0)
-      data.append('nickname', formData.nickname)
-      data.append('first_name', formData.first_name)
-      data.append('last_name', formData.last_name)
+      data.append('username', formData.username)
+      data.append('nama_depan', formData.nama_depan)
+      data.append('nama_belakang', formData.nama_belakang)
       data.append('email', formData.email)
       data.append('phone', formData.phone)
       data.append('status', formData.status)
@@ -174,8 +174,8 @@ function Profile() {
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center justify-center w-full py-2.5 text-sm font-medium leading-5 rounded-lg transition-all duration-200 ${activeTab === 'profile'
-                ? 'bg-white text-purple-700 shadow dark:bg-purple-600 dark:text-white'
-                : 'text-purple-500 hover:text-purple-700 hover:bg-white/[0.12] dark:text-gray-400 dark:hover:text-gray-200'
+              ? 'bg-white text-purple-700 shadow dark:bg-purple-600 dark:text-white'
+              : 'text-purple-500 hover:text-purple-700 hover:bg-white/[0.12] dark:text-gray-400 dark:hover:text-gray-200'
               }`}
           >
             <HiUserCircle className="w-5 h-5 mr-2" /> Informasi Akun
@@ -183,8 +183,8 @@ function Profile() {
           <button
             onClick={() => setActiveTab('berkas')}
             className={`flex items-center justify-center w-full py-2.5 text-sm font-medium leading-5 rounded-lg transition-all duration-200 ${activeTab === 'berkas'
-                ? 'bg-white text-purple-700 shadow dark:bg-purple-600 dark:text-white'
-                : 'text-purple-500 hover:text-purple-700 hover:bg-white/[0.12] dark:text-gray-400 dark:hover:text-gray-200'
+              ? 'bg-white text-purple-700 shadow dark:bg-purple-600 dark:text-white'
+              : 'text-purple-500 hover:text-purple-700 hover:bg-white/[0.12] dark:text-gray-400 dark:hover:text-gray-200'
               }`}
           >
             <HiIdentification className="w-5 h-5 mr-2" /> Berkas
@@ -204,7 +204,7 @@ function Profile() {
                       <input type="file" className="hidden" accept="image/*" onChange={handlePicChange} />
                     </label>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{formData.nickname}</h3>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{formData.username}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{user?.email}</p>
 
                   {pic && (
@@ -221,8 +221,8 @@ function Profile() {
                   <h4 className="mb-6 text-lg font-semibold text-gray-700 dark:text-gray-300 border-b pb-4 dark:border-gray-700">Detail Profil</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <label className="block text-sm">
-                      <span className="text-gray-700 dark:text-gray-400 font-semibold">Nickname</span>
-                      <input name="nickname" className="form-input mt-2" value={formData.nickname} onChange={handleInputChange} required />
+                      <span className="text-gray-700 dark:text-gray-400 font-semibold">username</span>
+                      <input name="username" className="form-input mt-2" value={formData.username} onChange={handleInputChange} required />
                     </label>
                     <label className="block text-sm">
                       <span className="text-gray-700 dark:text-gray-400 font-semibold">No. Telepon</span>
@@ -230,11 +230,11 @@ function Profile() {
                     </label>
                     <label className="block text-sm">
                       <span className="text-gray-700 dark:text-gray-400 font-semibold">Nama Depan</span>
-                      <input name="first_name" className="form-input mt-2" value={formData.first_name} onChange={handleInputChange} />
+                      <input name="nama_depan" className="form-input mt-2" value={formData.nama_depan} onChange={handleInputChange} />
                     </label>
                     <label className="block text-sm">
                       <span className="text-gray-700 dark:text-gray-400 font-semibold">Nama Belakang</span>
-                      <input name="last_name" className="form-input mt-2" value={formData.last_name} onChange={handleInputChange} />
+                      <input name="nama_belakang" className="form-input mt-2" value={formData.nama_belakang} onChange={handleInputChange} />
                     </label>
                     <label className="block text-sm md:col-span-2">
                       <span className="text-gray-700 dark:text-gray-400 font-semibold">Email</span>

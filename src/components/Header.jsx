@@ -1,4 +1,6 @@
-import { useContext, useState } from 'react'
+import { useContext, useState, useEffect } from 'react'
+import axios from 'axios'
+import { HiChatAlt2 } from 'react-icons/hi'
 import { ThemeContext } from '../context/ThemeContext'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -7,21 +9,46 @@ import { menus } from '../constants/menus'
 import { BaseUrl } from '../helper/api'
 
 function Header() {
-  const { 
-    theme, 
-    toggleTheme, 
-    toggleSideMenu, 
-    closeSideMenu, 
-    isProfileMenuOpen, 
-    toggleProfileMenu, 
-    closeProfileMenu 
+  const {
+    theme,
+    toggleTheme,
+    toggleSideMenu,
+    closeSideMenu,
+    isProfileMenuOpen,
+    toggleProfileMenu,
+    closeProfileMenu
   } = useContext(ThemeContext)
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState([])
   const navigate = useNavigate()
 
   const user = UserHelper.getUser()
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [proposalCount, setProposalCount] = useState(0)
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const config = UserHelper.axiosConfig()
+        if (!config) return
+        const res = await axios.get(`${BaseUrl}/api/chat/rooms`, config)
+        const rooms = res.data.data || []
+        
+        const totalUnread = rooms.reduce((acc, room) => acc + (room.unread_count || 0), 0)
+        const totalProposals = rooms.reduce((acc, room) => acc + (room.proposal_count || 0), 0)
+        
+        setUnreadCount(totalUnread)
+        setProposalCount(totalProposals)
+      } catch (_err) {
+        // Silently fail
+      }
+    }
+
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSearch = (e) => {
     const query = e.target.value
@@ -58,7 +85,7 @@ function Header() {
             <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"></path>
           </svg>
         </button>
-        
+
         {/* Search input - Hidden on mobile, shown on md+ */}
         <div className="hidden md:flex justify-center flex-1 lg:mr-32">
           <div className="relative w-full max-w-xl mr-6 focus-within:text-purple-500">
@@ -113,7 +140,38 @@ function Header() {
               )}
             </button>
           </li>
-          
+
+          {/* Chat Icon */}
+          <li className="flex">
+            <button
+              className="relative align-middle rounded-md focus:outline-none focus:shadow-outline-purple text-purple-600 dark:text-purple-300 transition-colors duration-150"
+              onClick={() => navigate('/chat')}
+              aria-label="Chat"
+            >
+              <HiChatAlt2 className="w-6 h-6" />
+              {(unreadCount > 0 || proposalCount > 0) && (
+                <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex flex-col gap-0.5">
+                  {unreadCount > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-600 rounded-full border-2 border-white dark:border-gray-800"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                  {proposalCount > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-blue-600 rounded-full border-2 border-white dark:border-gray-800"
+                    >
+                      {proposalCount > 99 ? '99+' : proposalCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          </li>
+
           {/* Profile menu */}
           <li className="relative">
             <button
@@ -121,7 +179,7 @@ function Header() {
               onClick={toggleProfileMenu}
             >
               <span className="hidden md:inline text-sm font-semibold text-gray-700 dark:text-gray-200">
-                {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User' : 'User'}
+                {user ? `${user.nama_depan || ''} ${user.nama_belakang || ''}`.trim() || 'User' : 'User'}
               </span>
               <img
                 className="object-cover w-8 h-8 rounded-full border-2 border-transparent hover:border-purple-400 transition-colors duration-150"

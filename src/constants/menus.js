@@ -2,6 +2,7 @@ export const menus = [
   { name: 'Dashboard', path: '/dashboard' },
   { name: 'Profile Saya', path: '/profile' },
   { name: 'Ubah Password', path: '/change-password' },
+  { name: 'Chat & Proposal', path: '/chat' },
   
   // Master Pegawai
   { name: 'Master Otoritas', path: '/master/otoritas' },

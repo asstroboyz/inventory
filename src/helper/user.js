@@ -37,10 +37,10 @@ export const UserHelper = {
   },
 
   // --- Shortcuts ---
-  getNickname: () => UserHelper.getUser()?.nickname || '',
+  getNickname: () => UserHelper.getUser()?.username || '',
   getEmail: () => UserHelper.getUser()?.email || '',
   getOtoritas: () => UserHelper.getUser()?.otoritas || null,
-  
+
   // --- Header Helpers ---
   authHeader: () => ({
     'Authorization': UserHelper.getToken() || ''

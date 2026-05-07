@@ -35,6 +35,7 @@ import TransIn from './pages/History/TransIn'
 import TransOut from './pages/History/TransOut'
 import StokBarang from './pages/Record/StokBarang'
 import StokInventaris from './pages/Record/StokInventaris'
+import Chat from './pages/Chat'
 
 function PrivateRoute({ children }) {
   return UserHelper.isAuthenticated() ? children : <Navigate to="/login" replace />
@@ -77,6 +78,7 @@ function App() {
           <Route path="/history/out" element={<PrivateRoute><TransOut /></PrivateRoute>} />
           <Route path="/record/barang" element={<PrivateRoute><StokBarang /></PrivateRoute>} />
           <Route path="/record/inventaris" element={<PrivateRoute><StokInventaris /></PrivateRoute>} />
+          <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/blank" element={<PrivateRoute><Blank /></PrivateRoute>} />
 
           <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -4,6 +4,21 @@ Semua perubahan penting pada bagian antarmuka pengguna (Frontend) akan dicatat d
 
 ---
 
+### **Mei 8, 2026**
+- **Enterprise Chat System (ProChat) Integration**:
+    - **Real-time Messaging**: Implementasi sistem chat internal dengan fitur polling cerdas untuk sinkronisasi pesan tanpa refresh.
+    - **Item Proposal Workflow**: Fitur usulan barang (Inventory/Katalog/Manual) langsung di dalam percakapan chat.
+    - **One-Click Approval**: Pimpinan dapat menyetujui usulan barang langsung dari gelembung chat, yang secara otomatis masuk ke keranjang pengadaan.
+    - **Mobile-First Optimization**:
+        - Implementasi *Backdrop Overlay* dan *Toggle Sidebar* (Kiri & Kanan) yang responsif untuk kenyamanan pengguna smartphone.
+        - Optimasi scroll dengan `overscroll-contain` untuk mencegah "bounce" layar yang tidak diinginkan.
+    - **Enhanced Visuals & Notifications**:
+        - Integrasi foto profil user pada seluruh komponen chat (Sidebar, Header, dan Bubble Chat).
+        - **Live Badge Notifications**: Penambahan indikator jumlah pesan belum dibaca dan usulan barang pada Header utama aplikasi.
+    - **Clean Code & Performance**:
+        - Refactoring besar-besaran untuk menghilangkan dependensi ikon yang tidak terpakai.
+        - Perbaikan hoisting fungsi dan lifecycle hooks untuk kompatibilitas penuh dengan React 19.
+
 ### **Mei 7, 2026**
 - **Permintaan Barang (Request) Module Overhaul**:
     - **Aesthetic Expandable Table**: Implementasi baris tabel yang dapat melebar (expand) dengan desain kartu premium untuk melihat detail item barang secara langsung tanpa membuka modal.
