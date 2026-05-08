@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import {
-  HiChatAlt2, HiLightningBolt, HiUsers, HiHashtag, HiShoppingCart,
-  HiSearch, HiVideoCamera, HiInformationCircle, HiPlus, HiPaperAirplane,
-  HiCube, HiCheckCircle, HiClock, HiDotsHorizontal, HiUser, HiX, HiHome, HiArrowLeft
+  HiChatAlt2, HiUsers, HiShoppingCart,
+  HiSearch, HiPlus, HiPaperAirplane,
+  HiCheckCircle, HiDotsHorizontal, HiUser, HiX, HiHome, HiArrowLeft, HiTrash
 } from 'react-icons/hi'
 import { UserHelper } from '../helper/user'
 import { BaseUrl } from '../helper/api'
@@ -41,53 +41,13 @@ const Chat = () => {
   const [isGroupMode, setIsGroupMode] = useState(false)
   const [groupName, setGroupName] = useState('')
   const [selectedUsers, setSelectedUsers] = useState([])
+  const [replyTo, setReplyTo] = useState(null)
 
   const user = UserHelper.getUser()
   const currentUserId = user?.id || user?.ID
   const messagesEndRef = useRef(null)
 
   const canCreateGroup = parseInt(user?.otoritas_id) !== 6
-  useEffect(() => {
-    if (activeRoom && window.innerWidth < 768) {
-      setIsSidebarOpen(false)
-    }
-  }, [activeRoom])
-
-  useEffect(() => {
-    fetchRooms()
-    fetchUsers()
-
-    // Poll for new rooms every 5 seconds
-    const interval = setInterval(() => {
-      fetchRooms()
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Search items when tab or search term changes
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchItems()
-    }, 500)
-    return () => clearTimeout(delayDebounceFn)
-  }, [activeTab, searchItem])
-
-  // Auto-polling for real-time feel
-  useEffect(() => {
-    let interval;
-    if (activeRoom) {
-      fetchMessages(activeRoom.id || activeRoom.ID)
-      interval = setInterval(() => {
-        fetchMessages(activeRoom.id || activeRoom.ID)
-      }, 3000) // Check for new messages every 3 seconds
-    }
-    return () => clearInterval(interval)
-  }, [activeRoom])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -98,14 +58,6 @@ const Chat = () => {
       const res = await axios.get(`${BaseUrl}/api/chat/rooms`, UserHelper.axiosConfig())
       const roomData = res.data.data || []
       setRooms(roomData)
-
-      // Gunakan functional update agar tidak terkena stale closure saat polling
-      setActiveRoom(prev => {
-        if (!prev && roomData.length > 0) {
-          return roomData[0]
-        }
-        return prev
-      })
     } catch (err) {
       console.error("Gagal mengambil room", err)
     }
@@ -154,6 +106,60 @@ const Chat = () => {
     }
   }
 
+  useEffect(() => {
+    if (activeRoom && window.innerWidth < 768) {
+      setIsSidebarOpen(false)
+    }
+    if (activeRoom) {
+      fetchMessages(activeRoom.id || activeRoom.ID)
+    }
+  }, [activeRoom])
+
+  useEffect(() => {
+    fetchRooms()
+    fetchUsers()
+  }, [])
+
+  // Search items when tab or search term changes
+  useEffect(() => {
+    fetchItems()
+  }, [activeTab, searchItem])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // WebSocket Integration for real-time chat
+  useEffect(() => {
+    if (!BaseUrl) return
+    const wsUrl = BaseUrl.replace('http', 'ws').replace('https', 'wss') + '/api/ws'
+    const socket = new WebSocket(wsUrl)
+
+    socket.onopen = () => console.log('Connected to WebSocket')
+    socket.onclose = () => console.log('Disconnected from WebSocket')
+    
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data)
+        if (payload.event === 'new_message') {
+          const newMessageData = payload.data
+          if (activeRoom && (activeRoom.id || activeRoom.ID) === newMessageData.room_id) {
+            fetchMessages(activeRoom.id || activeRoom.ID)
+          }
+          fetchRooms()
+        }
+        if (payload.event === 'delete_message') {
+          if (activeRoom) fetchMessages(activeRoom.id || activeRoom.ID)
+          fetchRooms()
+        }
+      } catch (err) {
+        console.error('WS Message Error:', err)
+      }
+    }
+
+    return () => socket.close()
+  }, [activeRoom])
+
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault()
     if (!newMessage.trim() || !activeRoom) return
@@ -165,10 +171,11 @@ const Chat = () => {
     try {
       const payload = {
         room_id: roomId,
-        message: tempMsg,
+        message: replyTo ? `> ${replyTo.message}\n\n${tempMsg}` : tempMsg,
         chat_message_type_id: 1 // Text
       }
       await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
+      setReplyTo(null)
       fetchMessages(roomId) // Refresh immediately
     } catch (err) {
       setNewMessage(tempMsg) // Restore on error
@@ -179,8 +186,6 @@ const Chat = () => {
   const handleProposeItem = async () => {
     if (!activeRoom) return
 
-    let itemName = ''
-    let itemCode = ''
     let payload = {
       room_id: activeRoom.id || activeRoom.ID,
       chat_message_type_id: 3, // Cart / Transaction Type
@@ -191,9 +196,7 @@ const Chat = () => {
         toast.error("Nama barang harus diisi")
         return
       }
-      itemName = manualItem.nama
-      itemCode = manualItem.merk ? `Merk: ${manualItem.merk}` : 'Manual Input'
-      payload.message = `PROPOSAL (MANUAL): ${itemName} ${manualItem.merk ? `[${manualItem.merk}]` : ''}`
+      payload.message = `PROPOSAL (MANUAL): ${manualItem.nama} ${manualItem.merk ? `[${manualItem.merk}]` : ''}`
       payload.reference_id = null
       payload.reference_type = 'manual'
     } else {
@@ -201,8 +204,8 @@ const Chat = () => {
         toast.error("Pilih barang terlebih dahulu")
         return
       }
-      itemName = selectedItem.master_barang?.nama_brg || selectedItem.nama_brg
-      itemCode = selectedItem.master_barang?.kode_brg || selectedItem.kode_brg
+      const itemName = selectedItem.master_barang?.nama_brg || selectedItem.nama_brg
+      const itemCode = selectedItem.master_barang?.kode_brg || selectedItem.kode_brg
       payload.message = `PROPOSAL: ${itemName} (${itemCode})`
       payload.reference_id = selectedItem.id || selectedItem.ID
       payload.reference_type = activeTab // 'inventory' or 'assets'
@@ -216,6 +219,7 @@ const Chat = () => {
       if (window.innerWidth < 1024) setIsRightSidebarOpen(false)
       fetchMessages(activeRoom.id || activeRoom.ID)
     } catch (err) {
+      console.error(err)
       toast.error("Gagal mengirim usulan")
     }
   }
@@ -236,7 +240,8 @@ const Chat = () => {
       await axios.post(`${BaseUrl}/api/chat/cart`, payload, UserHelper.axiosConfig())
       toast.success("Barang disetujui & masuk ke troli!")
       fetchMessages(activeRoom.id || activeRoom.ID) // Refresh to update status if needed
-    } catch (err) {
+    } catch (error) {
+      console.error(error)
       toast.error("Gagal menyetujui usulan")
     }
   }
@@ -254,7 +259,8 @@ const Chat = () => {
       setActiveRoom(newRoom)
       setIsNewChatModalOpen(false)
       if (window.innerWidth < 768) setIsSidebarOpen(false)
-    } catch (err) {
+    } catch (error) {
+      console.error(error)
       toast.error("Gagal memulai chat")
     }
   }
@@ -281,7 +287,8 @@ const Chat = () => {
       setIsGroupMode(false)
       if (window.innerWidth < 768) setIsSidebarOpen(false)
       toast.success("Grup berhasil dibuat")
-    } catch (err) {
+    } catch (error) {
+      console.error(error)
       toast.error("Gagal membuat grup")
     }
   }
@@ -291,7 +298,8 @@ const Chat = () => {
       await axios.delete(`${BaseUrl}/api/chat/messages/${messageId}?mode=${mode}`, UserHelper.axiosConfig())
       toast.success(mode === 'everyone' ? "Pesan ditarik" : "Pesan dihapus")
       fetchMessages(activeRoom.id || activeRoom.ID)
-    } catch (err) {
+    } catch (error) {
+      console.error(error)
       toast.error("Gagal menghapus pesan")
     }
   }
@@ -487,20 +495,22 @@ const Chat = () => {
         </nav>
       </div>
 
-      {/* OVERLAY FOR MOBILE */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-
       {/* CENTER - Chat Area */}
       <div className="flex-1 flex flex-col bg-[#0f172a] relative w-full">
         {activeRoom ? (
           <>
             <header className="h-20 border-b border-gray-800 flex items-center justify-between px-4 md:px-8 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-10">
               <div className="flex items-center gap-3 md:gap-6">
+                <button
+                  onClick={() => {
+                    setActiveRoom(null)
+                    setIsSidebarOpen(true)
+                  }}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-all group"
+                  title="Tutup Chat"
+                >
+                  <HiArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+                </button>
                 <button
                   onClick={() => setIsSidebarOpen(true)}
                   className="p-2 bg-gray-800 rounded-lg md:hidden text-gray-400"
@@ -546,8 +556,8 @@ const Chat = () => {
                       <div className="group relative">
                         {msg.chat_message_type_id === 3 ? (
                           <div
-                            onClick={() => handleShowDeleteOptions(msg)}
-                            className={`p-4 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] ${isMe
+                            onClick={() => setReplyTo(msg)}
+                            className={`group relative p-4 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] ${isMe
                               ? 'bg-purple-900/40 border-purple-500/50 text-white rounded-tr-none'
                               : 'bg-[#1e293b] border-gray-700 text-gray-200 rounded-tl-none'
                               }`}>
@@ -571,16 +581,52 @@ const Chat = () => {
                                 onClick={(e) => { e.stopPropagation(); /* Reject logic */ }}
                                 className="flex-1 bg-gray-700 hover:bg-gray-600 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all text-gray-300">Reject</button>
                             </div>
+
+                            {/* Action Icons on Hover */}
+                            <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} hidden group-hover:flex items-center gap-1 bg-[#1e293b] border border-gray-700 p-1 rounded-lg shadow-xl z-20`}>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
+                                className="p-1.5 hover:bg-gray-700 rounded-md text-gray-400 hover:text-purple-400 transition-colors"
+                                title="Balas"
+                              >
+                                <HiChatAlt2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); }}
+                                className="p-1.5 hover:bg-red-500/20 rounded-md text-gray-500 hover:text-red-400 transition-colors"
+                                title="Hapus"
+                              >
+                                <HiTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div
-                            onClick={() => handleShowDeleteOptions(msg)}
-                            className={`px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${isMe
+                            onClick={() => setReplyTo(msg)}
+                            className={`group relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${isMe
                               ? 'bg-purple-600 text-white rounded-tr-none shadow-purple-900/20'
                               : 'bg-[#1e293b] text-gray-200 rounded-tl-none border border-gray-700'
                               }`}
                           >
                             {msg.message}
+                            
+                            {/* Action Icons on Hover */}
+                            <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} hidden group-hover:flex items-center gap-1 bg-[#1e293b] border border-gray-700 p-1 rounded-lg shadow-xl z-20`}>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
+                                className="p-1.5 hover:bg-gray-700 rounded-md text-gray-400 hover:text-purple-400 transition-colors"
+                                title="Balas"
+                              >
+                                <HiChatAlt2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); }}
+                                className="p-1.5 hover:bg-red-500/20 rounded-md text-gray-500 hover:text-red-400 transition-colors"
+                                title="Hapus"
+                              >
+                                <HiX className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -592,6 +638,17 @@ const Chat = () => {
             </div>
 
             <form onSubmit={handleSendMessage} className="p-4 md:p-8">
+              {replyTo && (
+                <div className="max-w-4xl mx-auto mb-2 bg-[#1e293b] border-l-4 border-purple-500 p-3 rounded-r-xl flex justify-between items-center animate-in slide-in-from-bottom-2 duration-200">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Membalas {replyTo.sender?.username || 'Pesan'}</p>
+                    <p className="text-xs text-gray-400 truncate italic">"{replyTo.message}"</p>
+                  </div>
+                  <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-gray-700 rounded-full text-gray-500">
+                    <HiX className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <div className="max-w-4xl mx-auto bg-[#1e293b] rounded-2xl p-2 border border-gray-700 flex items-center gap-2 shadow-2xl focus-within:border-purple-500/50 transition-all">
                 <button
                   type="button"
@@ -827,22 +884,5 @@ const Chat = () => {
     </div>
   )
 }
-
-const RecommendedItem = ({ name, price }) => (
-  <div className="group">
-    <div className="flex items-center justify-between mb-2">
-      <h5 className="text-xs font-bold text-gray-200 group-hover:text-white transition-colors">{name}</h5>
-      <span className="text-[10px] font-bold text-purple-400">{price}</span>
-    </div>
-    <div className="flex gap-2">
-      <button className="flex-1 bg-[#334155] hover:bg-purple-600 text-[9px] font-bold py-2 rounded-lg text-white transition-all uppercase tracking-tighter">
-        Pengadaan
-      </button>
-      <button className="flex-1 bg-[#334155] hover:bg-blue-600 text-[9px] font-bold py-2 rounded-lg text-white transition-all uppercase tracking-tighter">
-        Permintaan
-      </button>
-    </div>
-  </div>
-)
 
 export default Chat

@@ -1,6 +1,6 @@
-# Changelog - Inventory Management System (Frontend)
+# Changelog - Inventory Management System (UI / UX)
 
-Semua perubahan penting pada bagian antarmuka pengguna (Frontend) akan dicatat di file ini.
+Semua perubahan penting pada bagian antarmuka pengguna (UI / UX) akan dicatat di file ini.
 
 ---
 
@@ -15,9 +15,15 @@ Semua perubahan penting pada bagian antarmuka pengguna (Frontend) akan dicatat d
     - **Enhanced Visuals & Notifications**:
         - Integrasi foto profil user pada seluruh komponen chat (Sidebar, Header, dan Bubble Chat).
         - **Live Badge Notifications**: Penambahan indikator jumlah pesan belum dibaca dan usulan barang pada Header utama aplikasi.
-    - **Clean Code & Performance**:
-        - Refactoring besar-besaran untuk menghilangkan dependensi ikon yang tidak terpakai.
-        - Perbaikan hoisting fungsi dan lifecycle hooks untuk kompatibilitas penuh dengan React 19.
+    - **WebSocket Real-time Architecture**: Transisi penuh dari sistem polling ke koneksi WebSocket murni untuk sinkronisasi pesan instan.
+    - **Advanced Message Interaction**: 
+        - **Quoted Replies**: Fitur "Balas Pesan" yang memungkinkan pengguna mengutip pesan sebelumnya untuk konteks percakapan yang lebih jelas.
+        - **Smart Message Actions**: Menu aksi melayang (hover) untuk balas dan hapus pesan dengan antarmuka yang lebih modern (menggunakan ikon Trash untuk hapus).
+    - **Debounce-Free Search**: Penghapusan jeda (debounce) pada pencarian barang untuk pengalaman browsing katalog yang tanpa hambatan (zero-latency).
+    - **Code Integrity & Stability**: 
+        - Perbaikan kritis pada isu *access before declaration* (hoisting).
+        - Pembersihan dependensi unused icons dan optimasi catch-block untuk debugging yang lebih baik.
+        - Perbaikan isu history chat yang tidak muncul saat pertama kali room dipilih.
 
 ### **Mei 7, 2026**
 - **Permintaan Barang (Request) Module Overhaul**:
@@ -31,7 +37,7 @@ Semua perubahan penting pada bagian antarmuka pengguna (Frontend) akan dicatat d
 
 ### **Mei 6, 2026**
 - **Maintenance Module Synchronization**:
-    - Sinkronisasi frontend dengan struct backend terbaru (`Maintenance_r`).
+    - Sinkronisasi UI / UX dengan struct backend terbaru (`Maintenance_r`).
     - Pembaruan field data: `tanggal_jadwal`, `tanggal_selesai`, `hasil_servis`, dan penyesuaian status `Pending`.
     - Perbaikan tampilan `AsyncSelect` agar menampilkan nama aset secara instan setelah dipilih.
 - **Data Fetching Optimization**:
