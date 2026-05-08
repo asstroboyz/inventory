@@ -5,20 +5,26 @@ Semua perubahan penting pada bagian antarmuka pengguna (UI / UX) akan dicatat di
 ---
 
 ### **Mei 8, 2026**
-- **Enterprise Chat System (ProChat) Integration**:
-    - **Real-time Messaging**: Implementasi sistem chat internal dengan fitur polling cerdas untuk sinkronisasi pesan tanpa refresh.
-    - **Item Proposal Workflow**: Fitur usulan barang (Inventory/Katalog/Manual) langsung di dalam percakapan chat.
-    - **One-Click Approval**: Pimpinan dapat menyetujui usulan barang langsung dari gelembung chat, yang secara otomatis masuk ke keranjang pengadaan.
-    - **Mobile-First Optimization**:
-        - Implementasi *Backdrop Overlay* dan *Toggle Sidebar* (Kiri & Kanan) yang responsif untuk kenyamanan pengguna smartphone.
-        - Optimasi scroll dengan `overscroll-contain` untuk mencegah "bounce" layar yang tidak diinginkan.
-    - **Enhanced Visuals & Notifications**:
-        - Integrasi foto profil user pada seluruh komponen chat (Sidebar, Header, dan Bubble Chat).
-        - **Live Badge Notifications**: Penambahan indikator jumlah pesan belum dibaca dan usulan barang pada Header utama aplikasi.
+- **Multimedia Chat & UX**:
+    - **Visual Attachments Rendering**: 
+        - Integrasi preview gambar langsung di dalam gelembung chat dengan efek *hover-to-zoom*.
+        - Implementasi kartu dokumen premium untuk file non-gambar (PDF, Word, dll) dengan ikon yang representatif dan fitur download sekali klik.
+    - **Advanced Action Menus**:
+        - **Sidebar Context Menu**: Implementasi klik kanan (Right-Click) pada daftar percakapan untuk aksi cepat (Hapus Chat, Keluar Grup, Bubarkan Grup).
+        - **Flipped Message Menu**: Re-engineering posisi menu aksi pesan agar terbuka ke atas (`bottom-full`) untuk mencegah menu terpotong oleh input bar.
+    - **Room Info & Management Sidebar**:
+        - Penambahan tab **"Info"** pada Sidebar Kanan yang menampilkan profil room, daftar anggota lengkap dengan badge Admin, dan pengaturan manajemen room.
+        - **Disband/Leave Functionality**: Fitur untuk membubarkan grup (oleh Admin) atau keluar dari grup (oleh Member) dengan dialog konfirmasi SweetAlert2.
+    - **UX Ergonimics & Polish**:
+        - **Alphabetical User Sorting**: Otomatis mengurutkan daftar pegawai (A-Z) pada modal pesan baru untuk mempermudah pencarian.
+        - **Type-Safe Filtering**: Optimasi filter ID menggunakan `Number()` casting untuk mencegah *mismatch* data string/integer.
+    - **Performance & Lifecycle Stability**:
+        - Refactoring besar-besaran seluruh fungsi fetching menggunakan `useCallback` untuk performa rendering yang lebih mulus dan stabil.
+        - Pembersihan *cascading renders* dan perbaikan peringatan *missing dependency* pada React Hooks.
     - **WebSocket Real-time Architecture**: Transisi penuh dari sistem polling ke koneksi WebSocket murni untuk sinkronisasi pesan instan.
     - **Advanced Message Interaction**: 
-        - **Quoted Replies**: Fitur "Balas Pesan" yang memungkinkan pengguna mengutip pesan sebelumnya untuk konteks percakapan yang lebih jelas.
-        - **Smart Message Actions**: Menu aksi melayang (hover) untuk balas dan hapus pesan dengan antarmuka yang lebih modern (menggunakan ikon Trash untuk hapus).
+        - **Quoted Replies**: Fitur "Balas Pesan" yang memungkinkan pengguna mengutip pesan sebelumnya.
+        - **Smart Message Actions**: Menu aksi melayang (hover) untuk balas dan hapus pesan dengan antarmuka yang lebih modern.
     - **Debounce-Free Search**: Penghapusan jeda (debounce) pada pencarian barang untuk pengalaman browsing katalog yang tanpa hambatan (zero-latency).
     - **Code Integrity & Stability**: 
         - Perbaikan kritis pada isu *access before declaration* (hoisting).

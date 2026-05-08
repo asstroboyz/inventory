@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import {
   HiChatAlt2, HiUsers, HiShoppingCart,
   HiSearch, HiPlus, HiPaperAirplane,
-  HiCheckCircle, HiDotsHorizontal, HiUser, HiX, HiHome, HiArrowLeft, HiTrash
+  HiCheckCircle, HiDotsHorizontal, HiUser, HiX, HiHome, HiArrowLeft, HiTrash,
+  HiReply, HiDuplicate, HiShare, HiStar, HiBookmark, HiChevronDown, HiPhotograph, HiDocumentText, HiOutlinePlus,
+  HiInformationCircle, HiUserGroup, HiLogout
 } from 'react-icons/hi'
 import { UserHelper } from '../helper/user'
 import { BaseUrl } from '../helper/api'
@@ -12,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import moment from 'moment'
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
+import { CHAT_CONSTANTS, canAccessFeature, canApproveReject } from '../helpers/chat'
 
 const MySwal = withReactContent(Swal)
 
@@ -42,38 +45,77 @@ const Chat = () => {
   const [groupName, setGroupName] = useState('')
   const [selectedUsers, setSelectedUsers] = useState([])
   const [replyTo, setReplyTo] = useState(null)
+  const [activeMenuId, setActiveMenuId] = useState(null)
+
+  // Advanced Chat Actions State
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  const [selectedMessageIds, setSelectedMessageIds] = useState([])
+  const [starredMessageIds, setStarredMessageIds] = useState([])
+  const [pinnedMessageIds, setPinnedMessageIds] = useState([])
+  const [isForwardModalOpen, setIsForwardModalOpen] = useState(false)
+  const [messageToForward, setMessageToForward] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null) // { x, y, room }
+
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false)
+  const fileInputRef = useRef(null)
+  const imageInputRef = useRef(null)
 
   const user = UserHelper.getUser()
   const currentUserId = user?.id || user?.ID
   const messagesEndRef = useRef(null)
 
-  const canCreateGroup = parseInt(user?.otoritas_id) !== 6
+  const isAuthorized = canAccessFeature(user)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     try {
       const res = await axios.get(`${BaseUrl}/api/chat/rooms`, UserHelper.axiosConfig())
       const roomData = res.data.data || []
       setRooms(roomData)
-    } catch (err) {
-      console.error("Gagal mengambil room", err)
+    } catch (e) {
+      console.error("Gagal mengambil room", e)
     }
-  }
+  }, [currentUserId])
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      const res = await axios.get(`${BaseUrl}/api/user/`, UserHelper.axiosConfig())
-      const otherUsers = res.data.data?.filter(u => (u.id || u.ID) !== currentUserId) || []
-      setUsers(otherUsers)
-    } catch (err) {
-      console.error("Gagal mengambil user", err)
-    }
-  }
+      const currentId = Number(currentUserId)
 
-  const fetchItems = async () => {
+      if (!Number.isFinite(currentId)) {
+        setUsers([])
+        return
+      }
+
+      const res = await axios.get(
+        `${BaseUrl}/api/user`,
+        UserHelper.axiosConfig()
+      )
+
+      const allUsers = Array.isArray(res.data?.data) ? res.data.data : []
+
+      const otherUsers = allUsers
+        .filter((user) => {
+          const userId = Number(user?.id ?? user?.ID)
+          return Number.isFinite(userId) && userId !== currentId
+        })
+        .sort((a, b) => {
+          const nameA = String(a?.nama_lengkap ?? a?.username ?? "").toLowerCase()
+          const nameB = String(b?.nama_lengkap ?? b?.username ?? "").toLowerCase()
+
+          return nameA.localeCompare(nameB)
+        })
+
+      setUsers(otherUsers)
+    } catch (error) {
+      console.error("Gagal mengambil user:", error)
+      setUsers([])
+    }
+  }, [currentUserId])
+
+  const fetchItems = useCallback(async () => {
     setIsSearchingItems(true)
     try {
       const endpoint = activeTab === 'inventory'
@@ -88,42 +130,42 @@ const Chat = () => {
 
       const res = await axios.post(endpoint, payload, UserHelper.axiosConfig())
       setItems(res.data.data || [])
-    } catch (err) {
-      console.error("Gagal mencari barang", err)
+    } catch (e) {
+      console.error("Gagal mencari barang", e)
     } finally {
       setIsSearchingItems(false)
     }
-  }
+  }, [activeTab, searchItem])
 
-  const fetchMessages = async (roomId) => {
+  const fetchMessages = useCallback(async (roomId) => {
     if (!roomId) return
     try {
       const res = await axios.get(`${BaseUrl}/api/chat/rooms/${roomId}/messages`, UserHelper.axiosConfig())
       const newMessages = res.data.data?.reverse() || []
       setMessages(newMessages)
-    } catch (err) {
-      console.error("Gagal mengambil pesan", err)
+    } catch (e) {
+      console.error("Gagal mengambil pesan", e)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    if (activeRoom && window.innerWidth < 768) {
-      setIsSidebarOpen(false)
-    }
     if (activeRoom) {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false)
+      }
       fetchMessages(activeRoom.id || activeRoom.ID)
     }
-  }, [activeRoom])
+  }, [activeRoom, fetchMessages])
 
   useEffect(() => {
     fetchRooms()
     fetchUsers()
-  }, [])
+  }, [fetchRooms, fetchUsers])
 
   // Search items when tab or search term changes
   useEffect(() => {
     fetchItems()
-  }, [activeTab, searchItem])
+  }, [fetchItems])
 
   useEffect(() => {
     scrollToBottom()
@@ -137,7 +179,7 @@ const Chat = () => {
 
     socket.onopen = () => console.log('Connected to WebSocket')
     socket.onclose = () => console.log('Disconnected from WebSocket')
-    
+
     socket.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data)
@@ -160,25 +202,130 @@ const Chat = () => {
     return () => socket.close()
   }, [activeRoom])
 
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveMenuId(null)
+      setContextMenu(null)
+    }
+    if (activeMenuId || contextMenu) {
+      const timer = setTimeout(() => {
+        window.addEventListener('click', handleClickOutside)
+        window.addEventListener('contextmenu', handleClickOutside)
+      }, 0)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('click', handleClickOutside)
+        window.removeEventListener('contextmenu', handleClickOutside)
+      }
+    }
+  }, [activeMenuId, contextMenu])
+
+  const handleContextMenu = (e, room) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({
+      x: e.pageX,
+      y: e.pageY,
+      room
+    })
+  }
+
+  const handleForwardMessage = async (targetRoom) => {
+    if (!messageToForward) return
+    const targetRoomId = targetRoom.id || targetRoom.ID
+    try {
+      // Clean existing prefix to avoid [Forwarded]: [Forwarded]:
+      const cleanMessage = messageToForward.message.startsWith('[Forwarded]:')
+        ? messageToForward.message.replace('[Forwarded]:', '').trim()
+        : messageToForward.message;
+
+      const payload = {
+        room_id: targetRoomId,
+        message: `[Forwarded]: ${cleanMessage}`,
+        chat_message_type_id: messageToForward.chat_message_type_id || 1
+      }
+      await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
+      toast.success(`Pesan diteruskan ke ${getRoomName(targetRoom)}`)
+      setIsForwardModalOpen(false)
+      setMessageToForward(null)
+      if (activeRoom && (activeRoom.id || activeRoom.ID) === targetRoomId) {
+        fetchMessages(targetRoomId)
+      }
+    } catch (err) {
+      toast.error("Gagal meneruskan pesan")
+    }
+  }
+
+  const toggleMessageSelection = (msgId) => {
+    if (selectedMessageIds.includes(msgId)) {
+      setSelectedMessageIds(selectedMessageIds.filter(id => id !== msgId))
+    } else {
+      setSelectedMessageIds([...selectedMessageIds, msgId])
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedMessageIds.length === 0) return
+
+    MySwal.fire({
+      title: 'Hapus terpilih?',
+      text: `Anda akan menghapus ${selectedMessageIds.length} pesan.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      background: '#1e293b',
+      confirmButtonColor: '#ef4444'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await Promise.all(selectedMessageIds.map(id =>
+            axios.delete(`${BaseUrl}/api/chat/messages/${id}?mode=me`, UserHelper.axiosConfig())
+          ))
+          toast.success("Pesan-pesan berhasil dihapus")
+          setSelectedMessageIds([])
+          setIsSelectMode(false)
+          fetchMessages(activeRoom.id || activeRoom.ID)
+        } catch (err) {
+          toast.error("Beberapa pesan gagal dihapus")
+        }
+      }
+    })
+  }
+
   const handleSendMessage = async (e) => {
-    if (e) e.preventDefault()
+    if (e && typeof e.preventDefault === 'function') e.preventDefault()
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation()
+
     if (!newMessage.trim() || !activeRoom) return
 
     const tempMsg = newMessage
+    const currentReply = replyTo
     const roomId = activeRoom.id || activeRoom.ID
-    setNewMessage('') // Clear input early for better UX
+
+    setNewMessage('')
 
     try {
+      const cleanReplyText = currentReply && currentReply.message.startsWith('> ')
+        ? currentReply.message.split('\n\n').slice(1).join('\n\n')
+        : currentReply?.message;
+
       const payload = {
         room_id: roomId,
-        message: replyTo ? `> ${replyTo.message}\n\n${tempMsg}` : tempMsg,
+        message: currentReply ? `> ${cleanReplyText}\n\n${tempMsg}` : tempMsg,
         chat_message_type_id: 1 // Text
       }
-      await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
-      setReplyTo(null)
-      fetchMessages(roomId) // Refresh immediately
+
+      const res = await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
+
+      if (res.status === 200 || res.status === 201) {
+        setReplyTo(null)
+        fetchMessages(roomId)
+      } else {
+        throw new Error("Gagal mengirim")
+      }
     } catch (err) {
-      setNewMessage(tempMsg) // Restore on error
+      setNewMessage(tempMsg)
+      if (currentReply) setReplyTo(currentReply)
       toast.error("Gagal mengirim pesan")
     }
   }
@@ -246,6 +393,37 @@ const Chat = () => {
     }
   }
 
+  const handleRejectProposal = async (msg) => {
+    if (!isAuthorized) {
+      toast.error("Hanya Admin/Pimpinan yang bisa menolak")
+      return
+    }
+
+    MySwal.fire({
+      title: 'Tolak Usulan?',
+      text: "Usulan ini akan dihapus permanen dari percakapan.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Tolak',
+      cancelButtonText: 'Batal',
+      background: '#1e293b',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const msgId = msg.id || msg.ID
+          await axios.delete(`${BaseUrl}/api/chat/messages/${msgId}?mode=everyone`, UserHelper.axiosConfig())
+          toast.success("Usulan berhasil ditolak")
+          fetchMessages(activeRoom.id || activeRoom.ID)
+        } catch (error) {
+          console.error("Reject Error:", error)
+          toast.error("Gagal menolak usulan")
+        }
+      }
+    })
+  }
+
   const startPrivateChat = async (targetUser) => {
     const targetId = targetUser.id || targetUser.ID
     try {
@@ -304,6 +482,56 @@ const Chat = () => {
     }
   }
 
+  const handleDeleteRoom = async (roomId) => {
+    MySwal.fire({
+      title: 'Hapus Chat/Group?',
+      text: "Seluruh pesan dalam percakapan ini akan dihapus permanen!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await axios.delete(`${BaseUrl}/api/chat/rooms/${roomId}`, UserHelper.axiosConfig())
+          toast.success("Percakapan berhasil dihapus")
+          setActiveRoom(null)
+          fetchRooms()
+        } catch (error) {
+          console.error(error)
+          toast.error("Gagal menghapus percakapan")
+        }
+      }
+    })
+  }
+
+  const handleLeaveRoom = async (roomId) => {
+    MySwal.fire({
+      title: 'Keluar dari Group?',
+      text: "Anda tidak akan bisa melihat pesan baru dari group ini.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'Ya, Keluar!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await axios.post(`${BaseUrl}/api/chat/rooms/${roomId}/leave`, {}, UserHelper.axiosConfig())
+          toast.success("Berhasil keluar dari group")
+          setActiveRoom(null)
+          fetchRooms()
+        } catch (error) {
+          console.error(error)
+          toast.error("Gagal keluar dari group")
+        }
+      }
+    })
+  }
+
   const handleShowDeleteOptions = (msg) => {
     const isMe = (msg.sender_id || msg.SenderID) === currentUserId;
     const msgId = msg.id || msg.ID;
@@ -349,12 +577,26 @@ const Chat = () => {
     // For private, find the other member
     const otherMember = room.members?.find(m => (m.user_id || m.UserID) !== currentUserId)
     const otherUser = otherMember?.user || otherMember?.User
-    return otherUser?.username || otherUser?.nama_lengkap?.split(' ')[0] || "Private Chat"
+    return otherUser?.nama_lengkap || otherUser?.username || "Private Chat"
+  }
+
+  const getRoomPic = (room) => {
+    if (room.chat_room_type_id === 2) return null
+    const otherMember = room.members?.find(m => (m.user_id || m.UserID) !== currentUserId)
+    const otherUser = otherMember?.user || otherMember?.User
+    return getProfilePic(otherUser)
   }
 
   const getProfilePic = (userData) => {
+    if (!userData) return CHAT_CONSTANTS.DEFAULT_BOY_AVATAR
+
     const picPath = userData?.berkas?.find(b => b.jenis === 'foto_profil')?.path
-    return picPath ? `${BaseUrl}${picPath}` : null
+    if (picPath) return `${BaseUrl}${picPath}`
+
+    // Fallback to local gender-based avatars
+    const jk = userData.jenis_kelamin || userData.JenisKelamin || 'L'
+    if (jk === 'P') return CHAT_CONSTANTS.DEFAULT_GIRL_AVATAR
+    return CHAT_CONSTANTS.DEFAULT_BOY_AVATAR
   }
 
   const RecommendedItem = ({ item }) => {
@@ -386,6 +628,116 @@ const Chat = () => {
         </div>
       </div>
     )
+  }
+
+
+  const copyTextFallback = (text) => {
+    const textarea = document.createElement("textarea");
+
+    textarea.value = text;
+    textarea.readOnly = true;
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    const success = document.execCommand("copy");
+
+    document.body.removeChild(textarea);
+
+    if (!success) {
+      throw new Error("Copy fallback gagal");
+    }
+  };
+
+  const handleCopyMessage = async (e, msg) => {
+    e.stopPropagation();
+
+    const message = msg?.message || "";
+
+    const textToCopy = message.startsWith("> ")
+      ? message.split("\n\n").slice(1).join("\n\n").trim()
+      : message.trim();
+
+    if (!textToCopy) {
+      toast.error("Pesan kosong");
+      setActiveMenuId(null);
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        copyTextFallback(textToCopy);
+      }
+
+      toast.success("Pesan disalin");
+    } catch (error) {
+      console.error("Copy error:", error);
+      toast.error("Gagal menyalin pesan");
+    } finally {
+      setActiveMenuId(null);
+    }
+  };
+  const handleFileSelect = (type) => {
+    setIsAttachmentMenuOpen(false)
+    if (type === 'image') {
+      imageInputRef.current?.click()
+    } else if (type === 'document') {
+      fileInputRef.current?.click()
+    } else if (type === 'proposal') {
+      setIsRightSidebarOpen(true)
+    }
+  }
+
+  const onFileChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file || !activeRoom) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const loadingToast = toast.loading(`Mengupload ${file.name}...`)
+
+    try {
+      // 1. Upload file ke server
+      const res = await axios.post(`${BaseUrl}/api/chat/upload`, formData, {
+        ...UserHelper.axiosConfig(),
+        headers: {
+          ...UserHelper.axiosConfig().headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+
+      const { url, name } = res.data.data
+
+      // 2. Tentukan tipe pesan (2: Gambar, 4: Dokumen)
+      const isImage = file.type.startsWith('image/')
+      const messageTypeId = isImage ? 2 : 4
+
+      // 3. Kirim sebagai pesan chat
+      const payload = {
+        room_id: activeRoom.id || activeRoom.ID,
+        message: isImage ? `[Gambar]: ${name}` : `[File]: ${name}`,
+        chat_message_type_id: messageTypeId,
+        attachment_path: url
+      }
+
+      await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
+
+      toast.success("File berhasil terkirim", { id: loadingToast })
+      fetchMessages(activeRoom.id || activeRoom.ID)
+    } catch (err) {
+      console.error("Upload Error:", err)
+      toast.error("Gagal mengirim file", { id: loadingToast })
+    } finally {
+      // Reset input
+      e.target.value = ''
+    }
   }
 
   return (
@@ -425,7 +777,7 @@ const Chat = () => {
             </div>
             <div className="min-w-0">
               <h1 className="font-bold text-sm text-white truncate leading-none">
-                {user?.username || user?.nama_lengkap?.split(' ')[0] || 'ProChat'}
+                {user?.nama_lengkap || user?.username || user?.nama_depan}
               </h1>
               <span className="text-[10px] text-green-400 flex items-center gap-1 mt-1 font-bold">
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
@@ -454,26 +806,24 @@ const Chat = () => {
           {rooms.map(room => {
             const roomId = room.id || room.ID
             const activeRoomId = activeRoom?.id || activeRoom?.ID
+            const isActive = activeRoomId === roomId
             return (
               <div
                 key={roomId}
                 onClick={() => setActiveRoom(room)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all group ${activeRoomId === roomId ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-400 hover:bg-[#334155] hover:text-white'}`}
+                onContextMenu={(e) => handleContextMenu(e, room)}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all group ${isActive ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-400 hover:bg-[#334155] hover:text-white'}`}
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${activeRoomId === roomId ? 'bg-purple-500' : 'bg-gray-800 text-gray-500'}`}>
-                  {room.chat_room_type_id === 2 ? (
-                    <HiUsers className="w-5 h-5" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${isActive ? 'bg-purple-500' : 'bg-gray-800 text-gray-500'}`}>
+                  {getRoomPic(room) ? (
+                    <img src={getRoomPic(room)} alt="avatar" className="w-full h-full object-cover" />
                   ) : (
-                    (() => {
-                      const otherMember = room.members?.find(m => (m.user_id || m.UserID) !== currentUserId)
-                      const pic = getProfilePic(otherMember?.user || otherMember?.User)
-                      return pic ? <img src={pic} alt="avatar" className="w-full h-full object-cover" /> : <HiUser className="w-5 h-5" />
-                    })()
+                    room.chat_room_type_id === 2 ? <HiUsers className="w-5 h-5" /> : <HiUser className="w-5 h-5" />
                   )}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <p className="font-semibold text-sm truncate">{getRoomName(room)}</p>
-                  <p className={`text-[10px] truncate ${activeRoomId === roomId ? 'text-purple-200' : 'text-gray-500'}`}>
+                  <p className={`text-[10px] truncate ${isActive ? 'text-purple-200' : 'text-gray-500'}`}>
                     {room.chat_room_type_id === 2 ? 'Group Chat' : 'Direct Message'}
                   </p>
                 </div>
@@ -500,32 +850,67 @@ const Chat = () => {
         {activeRoom ? (
           <>
             <header className="h-20 border-b border-gray-800 flex items-center justify-between px-4 md:px-8 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-10">
-              <div className="flex items-center gap-3 md:gap-6">
-                <button
-                  onClick={() => {
-                    setActiveRoom(null)
-                    setIsSidebarOpen(true)
-                  }}
-                  className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-all group"
-                  title="Tutup Chat"
-                >
-                  <HiArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-                </button>
-                <button
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="p-2 bg-gray-800 rounded-lg md:hidden text-gray-400"
-                >
-                  <HiDotsHorizontal className="w-5 h-5" />
-                </button>
-                <h2 className="text-sm md:text-xl font-bold text-white tracking-tight truncate max-w-[150px] md:max-w-none">
-                  {getRoomName(activeRoom)}
-                </h2>
-              </div>
-              <div className="flex items-center gap-3 md:gap-5 text-gray-400">
-                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className="p-2 bg-purple-600/20 text-purple-400 rounded-lg">
-                  <HiShoppingCart className="w-5 h-5" />
-                </button>
-              </div>
+              {isSelectMode ? (
+                <div className="flex-1 flex items-center justify-between animate-in slide-in-from-top duration-300">
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => { setIsSelectMode(false); setSelectedMessageIds([]); }} className="text-gray-400 hover:text-white">
+                      <HiX className="w-6 h-6" />
+                    </button>
+                    <span className="font-bold text-white">{selectedMessageIds.length} terpilih</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button onClick={handleBulkDelete} className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                      <HiTrash className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 md:gap-6">
+                    <button
+                      onClick={() => {
+                        setActiveRoom(null)
+                        setIsSidebarOpen(true)
+                      }}
+                      className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-all group"
+                      title="Tutup Chat"
+                    >
+                      <HiArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+                    </button>
+                    <button
+                      onClick={() => setIsSidebarOpen(true)}
+                      className="p-2 bg-gray-800 rounded-lg md:hidden text-gray-400"
+                    >
+                      <HiDotsHorizontal className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-700">
+                        {getRoomPic(activeRoom) ? (
+                          <img src={getRoomPic(activeRoom)} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <HiUser className="w-6 h-6 text-gray-500" />
+                        )}
+                      </div>
+                      <h2 className="text-sm md:text-xl font-bold text-white tracking-tight truncate max-w-[150px] md:max-w-none">
+                        {getRoomName(activeRoom)}
+                      </h2>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 md:gap-5 text-gray-400">
+                    <button
+                      onClick={() => { setActiveTab('info'); setIsRightSidebarOpen(true); }}
+                      className={`p-2 rounded-lg transition-all ${activeTab === 'info' && isRightSidebarOpen ? 'bg-purple-600 text-white' : 'hover:bg-gray-800'}`}
+                    >
+                      <HiInformationCircle className="w-5 h-5" />
+                    </button>
+                    {isAuthorized && (
+                      <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className="p-2 bg-purple-600/20 text-purple-400 rounded-lg">
+                        <HiShoppingCart className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </header>
 
             {/* CHAT MESSAGES AREA */}
@@ -536,7 +921,14 @@ const Chat = () => {
                 const isMe = senderId === currentUserId
 
                 return (
-                  <div key={msgId} className={`flex gap-3 md:gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
+                  <div key={msgId} className={`flex gap-3 md:gap-4 ${isMe ? 'flex-row-reverse' : ''} ${isSelectMode ? 'cursor-pointer hover:bg-purple-600/5' : ''}`} onClick={() => isSelectMode && toggleMessageSelection(msgId)}>
+                    {isSelectMode && (
+                      <div className="flex items-center justify-center px-2">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedMessageIds.includes(msgId) ? 'bg-purple-600 border-purple-500' : 'border-gray-600'}`}>
+                          {selectedMessageIds.includes(msgId) && <HiCheckCircle className="text-white w-4 h-4" />}
+                        </div>
+                      </div>
+                    )}
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 border border-gray-700 overflow-hidden">
                       {(() => {
                         const sender = msg.sender || msg.Sender
@@ -545,87 +937,316 @@ const Chat = () => {
                       })()}
                     </div>
 
-                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]`}>
-                      <div className="flex items-center gap-2 mb-1 px-1">
-                        <span className="text-[10px] md:text-[11px] font-bold text-gray-400">
-                          {isMe ? 'Anda' : ((msg.sender?.username || msg.Sender?.username) || (msg.sender?.nama_lengkap?.split(' ')[0] || msg.Sender?.nama_lengkap?.split(' ')[0]))}
+                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-[75%] lg:max-w-[65%]`}>
+                      {!isMe && (
+                        <span className="text-[10px] md:text-[11px] font-bold text-purple-400 mb-1 px-1">
+                          {((msg.sender?.username || msg.Sender?.username) || (msg.sender?.nama_lengkap || msg.Sender?.nama_lengkap))}
                         </span>
-                        <span className="text-[8px] md:text-[9px] text-gray-500">{moment(msg.created_at || msg.CreatedAt).format('HH:mm')}</span>
-                      </div>
+                      )}
 
                       <div className="group relative">
                         {msg.chat_message_type_id === 3 ? (
                           <div
                             onClick={() => setReplyTo(msg)}
-                            className={`group relative p-4 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] ${isMe
-                              ? 'bg-purple-900/40 border-purple-500/50 text-white rounded-tr-none'
+                            className={`group relative p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg ${isMe
+                              ? 'bg-purple-900/60 border-purple-500/30 text-white rounded-tr-none shadow-purple-900/10'
                               : 'bg-[#1e293b] border-gray-700 text-gray-200 rounded-tl-none'
                               }`}>
+                            {msg.message?.startsWith('[Forwarded]:') && (
+                              <div className="flex items-center gap-1.5 mb-2 text-white/40 italic">
+                                <HiShare className="w-2.5 h-2.5" />
+                                <span className="text-[9px]">Forwarded</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-3 mb-2">
-                              <div className="p-2 bg-purple-600 rounded-lg">
+                              <div className="p-2 bg-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
                                 <HiShoppingCart className="text-white w-4 h-4" />
                               </div>
                               <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">Pengajuan Barang</span>
                             </div>
-                            <p className="text-sm font-bold mb-1">{msg.message}</p>
-                            <div className="flex gap-2 mt-4">
-                              {user?.otoritas_id <= 3 && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleApproveProposal(msg); }}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all"
-                                >
-                                  Approve
-                                </button>
+                            {pinnedMessageIds.includes(msgId) && (
+                              <div className="flex items-center gap-1 mb-1 opacity-80">
+                                <HiBookmark className="w-2.5 h-2.5 text-blue-400" />
+                                <span className="text-[8px] text-blue-400 font-bold uppercase tracking-widest">Pinned</span>
+                              </div>
+                            )}
+                            <p className="text-sm font-bold mb-1 whitespace-pre-wrap leading-relaxed">
+                              {msg.message?.startsWith('[Forwarded]:') ? msg.message.replace('[Forwarded]:', '').trim() : msg.message}
+                            </p>
+
+                            <div className="flex items-center justify-between mt-3">
+                              {!isMe && canApproveReject(user) && (
+                                <div className="flex gap-2 flex-1 mr-4">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleApproveProposal(msg); }}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all shadow-md"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleRejectProposal(msg); }}
+                                    className="flex-1 bg-gray-800 hover:bg-gray-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all text-gray-400 border border-gray-700"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
                               )}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); /* Reject logic */ }}
-                                className="flex-1 bg-gray-700 hover:bg-gray-600 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all text-gray-300">Reject</button>
+                              <div className={`flex items-center gap-1.5 shrink-0 ${isMe ? 'w-full justify-end' : ''}`}>
+                                {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                                <span className="text-[9px] text-gray-500 font-medium">{moment(msg.created_at || msg.CreatedAt).format('HH:mm')}</span>
+                              </div>
                             </div>
 
-                            {/* Action Icons on Hover */}
-                            <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} hidden group-hover:flex items-center gap-1 bg-[#1e293b] border border-gray-700 p-1 rounded-lg shadow-xl z-20`}>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
-                                className="p-1.5 hover:bg-gray-700 rounded-md text-gray-400 hover:text-purple-400 transition-colors"
-                                title="Balas"
+                            {/* WhatsApp Style Action Menu */}
+                            <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(activeMenuId === msgId ? null : msgId);
+                                }}
+                                className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
                               >
-                                <HiChatAlt2 className="w-3.5 h-3.5" />
+                                <HiChevronDown className="w-4 h-4" />
                               </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); }}
-                                className="p-1.5 hover:bg-red-500/20 rounded-md text-gray-500 hover:text-red-400 transition-colors"
-                                title="Hapus"
-                              >
-                                <HiTrash className="w-3.5 h-3.5" />
-                              </button>
+
+                              {activeMenuId === msgId && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReplyTo(msg);
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiReply className="w-4 h-4 text-gray-400" /> Reply
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleCopyMessage(e, msg)}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMessageToForward(msg);
+                                      setIsForwardModalOpen(true);
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiShare className="w-4 h-4 text-gray-400" /> Forward
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (pinnedMessageIds.includes(msgId)) {
+                                        setPinnedMessageIds(pinnedMessageIds.filter(id => id !== msgId));
+                                        toast.success("Pin dilepas");
+                                      } else {
+                                        setPinnedMessageIds([...pinnedMessageIds, msgId]);
+                                        toast.success("Pesan disematkan");
+                                      }
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiBookmark className={`w-4 h-4 ${pinnedMessageIds.includes(msgId) ? 'text-blue-400' : 'text-gray-400'}`} /> {pinnedMessageIds.includes(msgId) ? 'Unpin' : 'Pin'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (starredMessageIds.includes(msgId)) {
+                                        setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
+                                        toast.success("Bintang dihapus");
+                                      } else {
+                                        setStarredMessageIds([...starredMessageIds, msgId]);
+                                        toast.success("Pesan ditandai bintang");
+                                      }
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
+                                  </button>
+                                  <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
+                                  <button
+                                    onClick={() => { handleShowDeleteOptions(msg); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiTrash className="w-4 h-4" /> Delete
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
                           <div
                             onClick={() => setReplyTo(msg)}
-                            className={`group relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${isMe
+                            className={`group relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:shadow-md ${isMe
                               ? 'bg-purple-600 text-white rounded-tr-none shadow-purple-900/20'
                               : 'bg-[#1e293b] text-gray-200 rounded-tl-none border border-gray-700'
                               }`}
                           >
-                            {msg.message}
-                            
-                            {/* Action Icons on Hover */}
-                            <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} hidden group-hover:flex items-center gap-1 bg-[#1e293b] border border-gray-700 p-1 rounded-lg shadow-xl z-20`}>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
-                                className="p-1.5 hover:bg-gray-700 rounded-md text-gray-400 hover:text-purple-400 transition-colors"
-                                title="Balas"
+                            {msg.message?.startsWith('[Forwarded]:') && (
+                              <div className="flex items-center gap-1.5 mb-1.5 text-white/40 italic">
+                                <HiShare className="w-3 h-3" />
+                                <span className="text-[10px]">Forwarded</span>
+                              </div>
+                            )}
+
+                            {msg.attachment_path && (
+                              <div className="mb-2 overflow-hidden rounded-lg">
+                                {msg.chat_message_type_id === 2 ? (
+                                  <a href={`${BaseUrl}${msg.attachment_path}`} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={`${BaseUrl}${msg.attachment_path}`}
+                                      alt="attachment"
+                                      className="max-w-full max-h-60 md:max-h-80 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-500"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={`${BaseUrl}${msg.attachment_path}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 hover:bg-black/50 transition-all group"
+                                  >
+                                    <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                      <HiDocumentText className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1 min-w-0 pr-4">
+                                      <p className="text-[11px] md:text-xs font-bold text-white truncate">{msg.message?.replace('[File]: ', '') || 'Document'}</p>
+                                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-tighter">Download File</p>
+                                    </div>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {(() => {
+                              const cleanMsg = msg.message?.startsWith(CHAT_CONSTANTS.FWD_PREFIX)
+                                ? msg.message.replace(CHAT_CONSTANTS.FWD_PREFIX, '').trim()
+                                : msg.message;
+
+                              if (msg.attachment_path && (cleanMsg.startsWith('[Gambar]:') || cleanMsg.startsWith('[File]:'))) {
+                                return null;
+                              }
+
+                              return cleanMsg?.startsWith(CHAT_CONSTANTS.REPLY_PREFIX) ? (
+                                <div className="flex flex-col gap-2">
+                                  <div className={`border-l-4 p-3 rounded-lg text-[11px] italic mb-1 leading-relaxed shadow-inner ${isMe ? 'bg-black/30 border-purple-300 opacity-90' : 'bg-black/40 border-purple-500 opacity-80'
+                                    }`}>
+                                    {cleanMsg.split('\n\n')[0].substring(CHAT_CONSTANTS.REPLY_PREFIX.length)}
+                                  </div>
+                                  <div className="whitespace-pre-wrap leading-relaxed">
+                                    {cleanMsg.split('\n\n').slice(1).join('\n\n')}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="whitespace-pre-wrap leading-relaxed">{cleanMsg}</div>
+                              );
+                            })()}
+
+                            <div className="flex items-center justify-end gap-1.5 mt-1.5">
+                              {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                              <span className={`text-[9px] font-medium ${isMe ? 'text-purple-200' : 'text-gray-500'}`}>
+                                {moment(msg.created_at || msg.CreatedAt).format('HH:mm')}
+                              </span>
+                            </div>
+
+                            {pinnedMessageIds.includes(msgId) && (
+                              <div className="flex items-center gap-1 mt-1 opacity-60">
+                                <HiBookmark className="w-2 h-2 text-blue-400" />
+                                <span className="text-[7px] text-blue-400 font-bold uppercase">Pinned</span>
+                              </div>
+                            )}
+
+                            {/* WhatsApp Style Action Menu */}
+                            <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(activeMenuId === msgId ? null : msgId);
+                                }}
+                                className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
                               >
-                                <HiChatAlt2 className="w-3.5 h-3.5" />
+                                <HiChevronDown className="w-4 h-4" />
                               </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); }}
-                                className="p-1.5 hover:bg-red-500/20 rounded-md text-gray-500 hover:text-red-400 transition-colors"
-                                title="Hapus"
-                              >
-                                <HiX className="w-3.5 h-3.5" />
-                              </button>
+
+                              {activeMenuId === msgId && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReplyTo(msg);
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiReply className="w-4 h-4 text-gray-400" /> Reply
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleCopyMessage(e, msg)}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMessageToForward(msg);
+                                      setIsForwardModalOpen(true);
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiShare className="w-4 h-4 text-gray-400" /> Forward
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (starredMessageIds.includes(msgId)) {
+                                        setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
+                                        toast.success("Bintang dihapus");
+                                      } else {
+                                        setStarredMessageIds([...starredMessageIds, msgId]);
+                                        toast.success("Pesan ditandai bintang");
+                                      }
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
+                                  </button>
+                                  <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); setActiveMenuId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
+                                  >
+                                    <HiTrash className="w-4 h-4" /> Delete
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -642,31 +1263,88 @@ const Chat = () => {
                 <div className="max-w-4xl mx-auto mb-2 bg-[#1e293b] border-l-4 border-purple-500 p-3 rounded-r-xl flex justify-between items-center animate-in slide-in-from-bottom-2 duration-200">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Membalas {replyTo.sender?.username || 'Pesan'}</p>
-                    <p className="text-xs text-gray-400 truncate italic">"{replyTo.message}"</p>
+                    <p className="text-xs text-gray-400 truncate italic">
+                      "{replyTo.message.startsWith('> ') ? replyTo.message.split('\n\n').slice(1).join('\n\n') : replyTo.message}"
+                    </p>
                   </div>
-                  <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-gray-700 rounded-full text-gray-500">
+                  <button type="button" onClick={() => setReplyTo(null)} className="p-1 hover:bg-gray-700 rounded-full text-gray-500">
                     <HiX className="w-4 h-4" />
                   </button>
                 </div>
               )}
-              <div className="max-w-4xl mx-auto bg-[#1e293b] rounded-2xl p-2 border border-gray-700 flex items-center gap-2 shadow-2xl focus-within:border-purple-500/50 transition-all">
-                <button
-                  type="button"
-                  onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isRightSidebarOpen ? 'bg-purple-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-400'}`}
-                >
-                  <HiPlus className="w-5 h-5" />
-                </button>
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Tulis pesan..."
-                  className="flex-1 bg-transparent border-none outline-none text-white px-2 py-2 placeholder-gray-600 text-sm"
-                />
-                <button type="submit" className="w-10 h-10 bg-purple-600 hover:bg-purple-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-purple-600/30 transition-all active:scale-95">
-                  <HiPaperAirplane className="rotate-90 w-5 h-5" />
-                </button>
+              <div className="max-w-4xl mx-auto relative">
+                {/* Hidden File Inputs */}
+                <input type="file" ref={imageInputRef} onChange={onFileChange} accept="image/*" className="hidden" />
+                <input type="file" ref={fileInputRef} onChange={onFileChange} accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" />
+
+                {/* Attachment Menu */}
+                {isAttachmentMenuOpen && (
+                  <div className="absolute bottom-full left-0 mb-4 w-56 bg-[#1e293b]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+                    <button
+                      type="button"
+                      onClick={() => handleFileSelect('image')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                        <HiPhotograph className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-white">Gambar</p>
+                        <p className="text-[10px] text-gray-500">Kirim foto galeri</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFileSelect('document')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                        <HiDocumentText className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-white">Dokumen</p>
+                        <p className="text-[10px] text-gray-500">PDF, Word, Excel</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFileSelect('proposal')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all">
+                        <HiShoppingCart className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-white">Usulan Barang</p>
+                        <p className="text-[10px] text-gray-500">Cari dari inventaris</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                <div className="bg-[#1e293b] rounded-2xl p-2 border border-gray-700 flex items-center gap-2 shadow-2xl focus-within:border-purple-500/50 transition-all">
+                  <button
+                    type="button"
+                    onClick={() => setIsAttachmentMenuOpen(!isAttachmentMenuOpen)}
+                    className={`p-2 rounded-xl transition-all ${isAttachmentMenuOpen ? 'bg-purple-600 text-white rotate-45' : 'text-gray-400 hover:bg-gray-800'}`}
+                  >
+                    <HiOutlinePlus className="w-6 h-6" />
+                  </button>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Ketik pesan..."
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-white text-sm py-2"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newMessage.trim()}
+                    className={`p-2.5 rounded-xl transition-all ${newMessage.trim() ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40 hover:bg-purple-500' : 'bg-gray-800 text-gray-600'}`}
+                  >
+                    <HiPaperAirplane className="w-5 h-5 rotate-90" />
+                  </button>
+                </div>
               </div>
             </form>
           </>
@@ -698,29 +1376,125 @@ const Chat = () => {
             </button>
           </div>
 
-          <div className="flex bg-gray-900/50 p-1 rounded-xl mb-6 border border-gray-800">
+          <div className="flex bg-gray-900/50 p-1 rounded-xl mb-6 border border-gray-800 overflow-x-auto custom-scrollbar-hide">
+            <button
+              onClick={() => setActiveTab('info')}
+              className={`flex-1 py-2 px-3 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'info' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              Info
+            </button>
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex-1 py-2 px-3 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'inventory' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              Inventory
+              Inv
             </button>
             <button
               onClick={() => setActiveTab('assets')}
-              className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'assets' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex-1 py-2 px-3 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'assets' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              Catalog
+              Cat
             </button>
             <button
               onClick={() => setActiveTab('manual')}
-              className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'manual' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+              className={`flex-1 py-2 px-3 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'manual' ? 'bg-[#334155] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
             >
-              Manual
+              Man
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 pb-20 overscroll-contain">
-            {activeTab === 'manual' ? (
+            {activeTab === 'info' ? (
+              <div className="space-y-6">
+                {/* Room Profile */}
+                <div className="flex flex-col items-center text-center py-4">
+                  <div className="w-24 h-24 rounded-3xl bg-gray-800 border-4 border-gray-900 shadow-2xl flex items-center justify-center overflow-hidden mb-4 ring-1 ring-white/5">
+                    {getRoomPic(activeRoom) ? (
+                      <img src={getRoomPic(activeRoom)} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <HiUserGroup className="w-12 h-12 text-gray-500" />
+                    )}
+                  </div>
+                  <h4 className="text-lg font-bold text-white">{getRoomName(activeRoom)}</h4>
+                  <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">
+                    {activeRoom.chat_room_type_id === 2 ? 'Group Chat' : 'Private Conversation'}
+                  </p>
+                </div>
+
+                {/* Members List (for Group) */}
+                {activeRoom.chat_room_type_id === 2 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <h5 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Members ({activeRoom.members?.length || 0})</h5>
+                    </div>
+                    <div className="space-y-2">
+                      {activeRoom.members?.map(m => {
+                        const u = m.user || m.User
+                        const isCreator = (activeRoom.created_by || activeRoom.CreatedBy) === (u.id || u.ID)
+                        return (
+                          <div key={u.id || u.ID} className="flex items-center gap-3 p-2 bg-gray-900/30 rounded-xl border border-white/5">
+                            <div className="w-8 h-8 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
+                              <img src={getProfilePic(u)} alt="avatar" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-gray-200 truncate">{u.nama_lengkap || u.username}</p>
+                              <p className="text-[9px] text-gray-500 truncate uppercase tracking-tighter">@{u.username}</p>
+                            </div>
+                            {isCreator && (
+                              <span className="text-[8px] bg-purple-600/20 text-purple-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-purple-500/20">Admin</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions Section */}
+                <div className="pt-4 space-y-3">
+                  <h5 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">Settings</h5>
+
+                  {activeRoom.chat_room_type_id === 1 ? (
+                    <button
+                      onClick={() => handleDeleteRoom(activeRoom.id || activeRoom.ID)}
+                      className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
+                    >
+                      <HiTrash className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <div className="text-left">
+                        <p className="text-xs font-bold">Hapus Chat</p>
+                        <p className="text-[9px] opacity-60">Bersihkan semua pesan</p>
+                      </div>
+                    </button>
+                  ) : (
+                    <>
+                      {(activeRoom.created_by || activeRoom.CreatedBy) === currentUserId ? (
+                        <button
+                          onClick={() => handleDeleteRoom(activeRoom.id || activeRoom.ID)}
+                          className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
+                        >
+                          <HiTrash className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                          <div className="text-left">
+                            <p className="text-xs font-bold">Bubarkan Group</p>
+                            <p className="text-[9px] opacity-60">Hapus group untuk semua member</p>
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleLeaveRoom(activeRoom.id || activeRoom.ID)}
+                          className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
+                        >
+                          <HiLogout className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                          <div className="text-left">
+                            <p className="text-xs font-bold">Keluar Group</p>
+                            <p className="text-[9px] opacity-60">Anda tidak akan menerima pesan lagi</p>
+                          </div>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'manual' ? (
               <div className="space-y-4">
                 <div className="bg-gray-900/30 p-4 rounded-2xl border border-gray-800">
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Nama Barang</label>
@@ -796,7 +1570,7 @@ const Chat = () => {
             </div>
 
             <div className="p-6 space-y-4">
-              {canCreateGroup && (
+              {isAuthorized && (
                 <div className="flex bg-gray-900/50 p-1 rounded-xl border border-gray-800">
                   <button
                     onClick={() => setIsGroupMode(false)}
@@ -881,6 +1655,70 @@ const Chat = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
       `}</style>
+      {/* FORWARD MODAL */}
+      {isForwardModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white">Forward Message</h3>
+              <button onClick={() => setIsForwardModalOpen(false)} className="text-gray-500 hover:text-white"><HiX className="w-6 h-6" /></button>
+            </div>
+            <div className="p-4 max-h-96 overflow-y-auto custom-scrollbar space-y-2">
+              <p className="text-xs text-gray-500 mb-4 px-2 italic">Select a conversation to forward this message.</p>
+              {rooms.map(room => (
+                <div
+                  key={room.id || room.ID}
+                  onClick={() => handleForwardMessage(room)}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800 cursor-pointer transition-all border border-transparent hover:border-gray-700"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-gray-400">
+                    {getRoomPic(room) ? <img src={getRoomPic(room)} alt="pic" className="w-full h-full object-cover rounded-lg" /> : (room.chat_room_type_id === 2 ? <HiUsers /> : <HiUser />)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{getRoomName(room)}</p>
+                    <p className="text-[10px] text-gray-500">{room.chat_room_type_id === 2 ? 'Group' : 'Private'}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CONTEXT MENU */}
+      {contextMenu && (
+        <div
+          className="fixed z-[9999] w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-100"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.room.chat_room_type_id === 1 ? (
+            <button
+              onClick={() => handleDeleteRoom(contextMenu.room.id || contextMenu.room.ID)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-white/5 transition-colors"
+            >
+              <HiTrash className="w-4 h-4" /> Hapus Percakapan
+            </button>
+          ) : (
+            <>
+              {(contextMenu.room.created_by || contextMenu.room.CreatedBy) === currentUserId ? (
+                <button
+                  onClick={() => handleDeleteRoom(contextMenu.room.id || contextMenu.room.ID)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-white/5 transition-colors"
+                >
+                  <HiTrash className="w-4 h-4" /> Bubarkan Group
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleLeaveRoom(contextMenu.room.id || contextMenu.room.ID)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-white/5 transition-colors"
+                >
+                  <HiTrash className="w-4 h-4" /> Keluar Group
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
