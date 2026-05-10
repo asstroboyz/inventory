@@ -1,8 +1,19 @@
 # Changelog - Inventory Management System (UI / UX)
 
-Semua perubahan penting pada bagian antarmuka pengguna (UI / UX) akan dicatat di file ini.
-
 ---
+
+### **Mei 10, 2026**
+- **Chat UX & Notifications System**:
+    - **Read Receipt Integration**: Implementasi status pesan ala WhatsApp (centang dua abu/ungu untuk *terkirim*, centang dua biru untuk *dibaca*) berbasis data `last_read_message_id`.
+    - **Intelligent Audio & Visual Notifs**: 
+        - Penambahan Toast notification yang dinamis menampilkan Nama Pengirim dan Cuplikan Pesan saat ada chat baru.
+        - Integrasi audio notifikasi (`notif.wav`) yang dilengkapi dengan *Audio Unlocking Workaround* untuk menembus kebijakan Auto-Play browser.
+        - Animasi *highlight pulse* ungu pada *bubble* pesan yang baru saja tiba.
+    - **Smart Unread Badge**: Otomatis menghilangkan badge *unread count* merah secara real-time dari sidebar tanpa menunggu refresh ketika obrolan di-klik.
+    - **Date Separators**: Penambahan elemen pemisah waktu (Hari ini, Kemarin, Nama Hari) secara dinamis di antara pesan untuk meningkatkan orientasi pembacaan histori chat.
+    - **Connection Resiliency**: Setup WebSocket *Auto-Reconnect* berinterval 3 detik jika terputus, dilengkapi mekanisme *fallback sync* per 15 detik agar UI selalu *up-to-date*.
+
+
 
 ### **Mei 8, 2026**
 - **Multimedia Chat & UX**:

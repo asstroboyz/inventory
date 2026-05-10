@@ -6,7 +6,7 @@ import {
   HiSearch, HiPlus, HiPaperAirplane,
   HiCheckCircle, HiDotsHorizontal, HiUser, HiX, HiHome, HiArrowLeft, HiTrash,
   HiReply, HiDuplicate, HiShare, HiStar, HiBookmark, HiChevronDown, HiPhotograph, HiDocumentText, HiOutlinePlus,
-  HiInformationCircle, HiUserGroup, HiLogout
+  HiInformationCircle, HiUserGroup, HiLogout, HiCheck
 } from 'react-icons/hi'
 import { UserHelper } from '../helper/user'
 import { BaseUrl } from '../helper/api'
@@ -17,6 +17,63 @@ import withReactContent from 'sweetalert2-react-content'
 import { CHAT_CONSTANTS, canAccessFeature, canApproveReject } from '../helpers/chat'
 
 const MySwal = withReactContent(Swal)
+
+const formatDateSeparator = (dateString) => {
+  const msgDate = moment(dateString).startOf('day')
+  const today = moment().startOf('day')
+  const diffDays = today.diff(msgDate, 'days')
+
+  if (diffDays === 0) return 'Hari ini'
+  if (diffDays === 1) return 'Kemarin'
+  if (diffDays < 7) {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    return days[msgDate.day()]
+  }
+  return msgDate.format('DD/MM/YYYY')
+}
+
+let notifAudio = null;
+let audioUnlocked = false;
+
+const unlockAudio = () => {
+  if (audioUnlocked) return;
+  if (!notifAudio) {
+    notifAudio = new Audio('/sound/notif.wav');
+    notifAudio.volume = 0.7;
+  }
+  
+  // Mainkan secara diam-diam dan langsung pause untuk membuka izin browser
+  const playPromise = notifAudio.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      notifAudio.pause();
+      notifAudio.currentTime = 0;
+      audioUnlocked = true;
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+    }).catch(err => {
+      console.log("Audio unlock failed:", err);
+    });
+  }
+};
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
+}
+
+const playNotificationSound = () => {
+  try {
+    if (!notifAudio) {
+      notifAudio = new Audio('/sound/notif.wav')
+      notifAudio.volume = 0.7
+    }
+    notifAudio.currentTime = 0;
+    notifAudio.play().catch(err => console.log("Audio play blocked by browser:", err))
+  } catch (err) {
+    console.error("Error playing sound:", err)
+  }
+}
 
 const Chat = () => {
   const navigate = useNavigate()
@@ -55,6 +112,7 @@ const Chat = () => {
   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false)
   const [messageToForward, setMessageToForward] = useState(null)
   const [contextMenu, setContextMenu] = useState(null) // { x, y, room }
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null)
 
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false)
   const fileInputRef = useRef(null)
@@ -82,23 +140,19 @@ const Chat = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const currentId = Number(currentUserId)
-
-      if (!Number.isFinite(currentId)) {
-        setUsers([])
-        return
-      }
+      const user = UserHelper.getUser()
+      const currentId = Number(user?.id || user?.ID)
 
       const res = await axios.get(
-        `${BaseUrl}/api/user`,
+        `${BaseUrl}/api/user/`,
         UserHelper.axiosConfig()
       )
 
       const allUsers = Array.isArray(res.data?.data) ? res.data.data : []
 
       const otherUsers = allUsers
-        .filter((user) => {
-          const userId = Number(user?.id ?? user?.ID)
+        .filter((u) => {
+          const userId = Number(u?.id ?? u?.ID)
           return Number.isFinite(userId) && userId !== currentId
         })
         .sort((a, b) => {
@@ -113,7 +167,7 @@ const Chat = () => {
       console.error("Gagal mengambil user:", error)
       setUsers([])
     }
-  }, [currentUserId])
+  }, [])
 
   const fetchItems = useCallback(async () => {
     setIsSearchingItems(true)
@@ -143,6 +197,14 @@ const Chat = () => {
       const res = await axios.get(`${BaseUrl}/api/chat/rooms/${roomId}/messages`, UserHelper.axiosConfig())
       const newMessages = res.data.data?.reverse() || []
       setMessages(newMessages)
+
+      // Hilangkan badge unread count secara lokal karena di backend sudah ditandai terbaca
+      setRooms(prevRooms => prevRooms.map(room => {
+        if ((room.id || room.ID) === roomId) {
+          return { ...room, unread_count: 0 }
+        }
+        return room
+      }))
     } catch (e) {
       console.error("Gagal mengambil pesan", e)
     }
@@ -174,33 +236,107 @@ const Chat = () => {
   // WebSocket Integration for real-time chat
   useEffect(() => {
     if (!BaseUrl) return
-    const wsUrl = BaseUrl.replace('http', 'ws').replace('https', 'wss') + '/api/ws'
-    const socket = new WebSocket(wsUrl)
+    let socket = null;
+    let reconnectTimer = null;
+    let syncInterval = null;
 
-    socket.onopen = () => console.log('Connected to WebSocket')
-    socket.onclose = () => console.log('Disconnected from WebSocket')
+    const connectWS = () => {
+      const wsUrl = BaseUrl.replace('http', 'ws').replace('https', 'wss') + '/api/ws'
+      socket = new WebSocket(wsUrl)
 
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data)
-        if (payload.event === 'new_message') {
-          const newMessageData = payload.data
-          if (activeRoom && (activeRoom.id || activeRoom.ID) === newMessageData.room_id) {
-            fetchMessages(activeRoom.id || activeRoom.ID)
+      socket.onopen = () => {
+        console.log('Connected to WebSocket')
+        // Sync rooms on reconnect just in case we missed events
+        fetchRooms()
+      }
+
+      socket.onclose = () => {
+        console.log('Disconnected from WebSocket, trying to reconnect...')
+        reconnectTimer = setTimeout(() => {
+          connectWS()
+        }, 3000)
+      }
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data)
+          if (payload.event === 'new_message') {
+            const newMessageData = payload.data
+            const isMe = String(newMessageData.sender_id || newMessageData.SenderID) === String(currentUserId);
+            
+            if (activeRoom && String(activeRoom.id || activeRoom.ID) === String(newMessageData.room_id)) {
+              fetchMessages(activeRoom.id || activeRoom.ID)
+              if (!isMe) {
+                const newMsgId = newMessageData.id || newMessageData.ID;
+                setHighlightedMessageId(String(newMsgId));
+                
+                const sender = newMessageData.sender || newMessageData.Sender || {};
+                const senderName = sender.nama_lengkap || sender.username || 'Seseorang';
+                const rawMsg = newMessageData.message || '';
+                const cleanMsg = rawMsg.replace('[Forwarded]:', '').trim();
+                const truncatedMsg = cleanMsg.length > 30 ? cleanMsg.substring(0, 30) + '...' : cleanMsg;
+
+                toast(
+                  <div className="flex flex-col min-w-[150px]">
+                    <span className="font-bold text-xs text-purple-400">{senderName}</span>
+                    <span className="text-[10px] text-gray-300 mt-0.5">{truncatedMsg || 'Mengirim lampiran'}</span>
+                  </div>, 
+                  { duration: 2000, icon: '💬', style: { background: '#1e293b', color: '#fff', borderRadius: '12px', border: '1px solid #334155' } }
+                );
+                playNotificationSound();
+
+                setTimeout(() => {
+                  setHighlightedMessageId((prev) => prev === String(newMsgId) ? null : prev);
+                }, 2000);
+              }
+            } else if (!isMe) {
+              const sender = newMessageData.sender || newMessageData.Sender || {};
+              const senderName = sender.nama_lengkap || sender.username || 'Seseorang';
+              const rawMsg = newMessageData.message || '';
+              const cleanMsg = rawMsg.replace('[Forwarded]:', '').trim();
+              const truncatedMsg = cleanMsg.length > 30 ? cleanMsg.substring(0, 30) + '...' : cleanMsg;
+
+              toast(
+                <div className="flex flex-col min-w-[150px]">
+                  <span className="font-bold text-xs text-purple-400">{senderName}</span>
+                  <span className="text-[10px] text-gray-300 mt-0.5">{truncatedMsg || 'Mengirim lampiran'}</span>
+                </div>, 
+                { duration: 2000, icon: '🔔', style: { background: '#1e293b', color: '#fff', borderRadius: '12px', border: '1px solid #334155' } }
+              );
+              playNotificationSound();
+            }
+            fetchRooms()
           }
-          fetchRooms()
+          if (payload.event === 'delete_message') {
+            if (activeRoom) fetchMessages(activeRoom.id || activeRoom.ID)
+            fetchRooms()
+          }
+          if (payload.event === 'read_receipt') {
+            fetchRooms()
+          }
+        } catch (err) {
+          console.error('WS Message Error:', err)
         }
-        if (payload.event === 'delete_message') {
-          if (activeRoom) fetchMessages(activeRoom.id || activeRoom.ID)
-          fetchRooms()
-        }
-      } catch (err) {
-        console.error('WS Message Error:', err)
       }
     }
 
-    return () => socket.close()
-  }, [activeRoom])
+    connectWS();
+
+    // Fallback sync every 15 seconds to ensure UI is completely accurate
+    // even if websockets drop messages or fail to reconnect immediately
+    syncInterval = setInterval(() => {
+      fetchRooms()
+    }, 15000);
+
+    return () => {
+      if (socket) {
+        socket.onclose = null; // prevent reconnect loop on unmount
+        socket.close();
+      }
+      clearTimeout(reconnectTimer);
+      clearInterval(syncInterval);
+    }
+  }, [activeRoom, currentUserId, fetchRooms, fetchMessages])
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -915,13 +1051,41 @@ const Chat = () => {
 
             {/* CHAT MESSAGES AREA */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar scroll-smooth overscroll-contain">
-              {messages.map((msg) => {
+              {messages.map((msg, index) => {
                 const msgId = msg.id || msg.ID
                 const senderId = msg.sender_id || msg.SenderID
                 const isMe = senderId === currentUserId
 
+                // Ambil data room terbaru dari state rooms
+                const currentRoomData = rooms.find(r => (r.id || r.ID) === (activeRoom?.id || activeRoom?.ID)) || activeRoom
+                // Cek apakah ada member lain yang last_read_message_id nya >= msgId
+                const isRead = currentRoomData?.members?.some(m => 
+                  String(m.user_id || m.UserID) !== String(currentUserId) && 
+                  (m.last_read_message_id || m.LastReadMessageID || 0) >= msgId
+                ) || false;
+
+                let showDateSeparator = false
+                const currentDate = moment(msg.created_at || msg.CreatedAt).startOf('day')
+                if (index === 0) {
+                  showDateSeparator = true
+                } else {
+                  const prevMsg = messages[index - 1]
+                  const prevDate = moment(prevMsg.created_at || prevMsg.CreatedAt).startOf('day')
+                  if (!currentDate.isSame(prevDate)) {
+                    showDateSeparator = true
+                  }
+                }
+
                 return (
-                  <div key={msgId} className={`flex gap-3 md:gap-4 ${isMe ? 'flex-row-reverse' : ''} ${isSelectMode ? 'cursor-pointer hover:bg-purple-600/5' : ''}`} onClick={() => isSelectMode && toggleMessageSelection(msgId)}>
+                  <div key={msgId} className="flex flex-col space-y-6">
+                    {showDateSeparator && (
+                      <div className="flex justify-center my-2">
+                        <div className="bg-[#1e293b] border border-gray-700 text-gray-400 text-[10px] font-bold px-4 py-1.5 rounded-full shadow-sm">
+                          {formatDateSeparator(msg.created_at || msg.CreatedAt)}
+                        </div>
+                      </div>
+                    )}
+                    <div className={`flex gap-3 md:gap-4 ${isMe ? 'flex-row-reverse' : ''} ${isSelectMode ? 'cursor-pointer hover:bg-purple-600/5' : ''} ${String(highlightedMessageId) === String(msgId) ? 'ring-2 ring-purple-500 bg-purple-600/20 rounded-2xl p-2 transition-all duration-500' : 'transition-all duration-500'}`} onClick={() => isSelectMode && toggleMessageSelection(msgId)}>
                     {isSelectMode && (
                       <div className="flex items-center justify-center px-2">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedMessageIds.includes(msgId) ? 'bg-purple-600 border-purple-500' : 'border-gray-600'}`}>
@@ -994,6 +1158,12 @@ const Chat = () => {
                               <div className={`flex items-center gap-1.5 shrink-0 ${isMe ? 'w-full justify-end' : ''}`}>
                                 {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
                                 <span className="text-[9px] text-gray-500 font-medium">{moment(msg.created_at || msg.CreatedAt).format('HH:mm')}</span>
+                                {isMe && (
+                                  <div className="flex -space-x-1.5">
+                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
+                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1163,6 +1333,12 @@ const Chat = () => {
                               <span className={`text-[9px] font-medium ${isMe ? 'text-purple-200' : 'text-gray-500'}`}>
                                 {moment(msg.created_at || msg.CreatedAt).format('HH:mm')}
                               </span>
+                              {isMe && (
+                                <div className="flex -space-x-1.5">
+                                  <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
+                                  <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
+                                </div>
+                              )}
                             </div>
 
                             {pinnedMessageIds.includes(msgId) && (
@@ -1252,6 +1428,7 @@ const Chat = () => {
                         )}
                       </div>
                     </div>
+                  </div>
                   </div>
                 )
               })}
@@ -1649,7 +1826,7 @@ const Chat = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
