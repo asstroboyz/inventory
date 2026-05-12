@@ -214,7 +214,29 @@ const StokInventaris = () => {
     try {
       const url = `${BaseUrl}/api/record/inventaris/`
       const method = editingId ? 'PUT' : 'POST'
-      const payload = editingId ? { ...formData, id: editingId } : formData
+      
+      let payload = editingId ? { ...formData, id: editingId } : { ...formData }
+
+      // Jika Create Baru, wajib sertakan pemeriksaan awal sesuai DTO
+      if (!editingId) {
+        const currentUser = UserHelper.getUser()
+        payload = {
+          ...payload,
+          pemeriksaan: {
+            tanggal_pemeriksaan: formData.tgl_perolehan || new Date().toISOString().split('T')[0],
+            kondisi: formData.kondisi,
+            jenis_pemeriksaan: "Pengecekan Awal",
+            status: "Selesai",
+            list_petugas: [
+              {
+                user_id: currentUser?.ID,
+                peran: "Petugas Input"
+              }
+            ]
+          }
+        }
+      }
+
       const res = await fetch(url, {
         method,
         headers: UserHelper.jsonHeader(),

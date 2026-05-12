@@ -41,7 +41,7 @@ const unlockAudio = () => {
     notifAudio = new Audio('/sound/notif.wav');
     notifAudio.volume = 0.7;
   }
-  
+
   // Mainkan secara diam-diam dan langsung pause untuk membuka izin browser
   const playPromise = notifAudio.play();
   if (playPromise !== undefined) {
@@ -119,14 +119,14 @@ const Chat = () => {
   const imageInputRef = useRef(null)
 
   const user = UserHelper.getUser()
-  const currentUserId = user?.id || user?.ID
+  const currentUserId = user?.ID
   const messagesEndRef = useRef(null)
 
   const isAuthorized = canAccessFeature(user)
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  }, [])
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -136,13 +136,12 @@ const Chat = () => {
     } catch (e) {
       console.error("Gagal mengambil room", e)
     }
-  }, [currentUserId])
+  }, [])
 
   const fetchUsers = useCallback(async () => {
     try {
       const user = UserHelper.getUser()
-      const currentId = Number(user?.id || user?.ID)
-
+      const currentId = Number(user?.ID)
       const res = await axios.get(
         `${BaseUrl}/api/user/`,
         UserHelper.axiosConfig()
@@ -152,7 +151,7 @@ const Chat = () => {
 
       const otherUsers = allUsers
         .filter((u) => {
-          const userId = Number(u?.id ?? u?.ID)
+          const userId = Number(u?.ID)
           return Number.isFinite(userId) && userId !== currentId
         })
         .sort((a, b) => {
@@ -200,7 +199,7 @@ const Chat = () => {
 
       // Hilangkan badge unread count secara lokal karena di backend sudah ditandai terbaca
       setRooms(prevRooms => prevRooms.map(room => {
-        if ((room.id || room.ID) === roomId) {
+        if (room.ID === roomId) {
           return { ...room, unread_count: 0 }
         }
         return room
@@ -213,25 +212,27 @@ const Chat = () => {
   useEffect(() => {
     if (activeRoom) {
       if (window.innerWidth < 768) {
-        setIsSidebarOpen(false)
+        Promise.resolve().then(() => setIsSidebarOpen(false))
       }
-      fetchMessages(activeRoom.id || activeRoom.ID)
+      Promise.resolve().then(() => fetchMessages(activeRoom.ID))
     }
   }, [activeRoom, fetchMessages])
 
   useEffect(() => {
-    fetchRooms()
-    fetchUsers()
+    Promise.resolve().then(() => {
+      fetchRooms()
+      fetchUsers()
+    })
   }, [fetchRooms, fetchUsers])
 
   // Search items when tab or search term changes
   useEffect(() => {
-    fetchItems()
+    Promise.resolve().then(() => fetchItems())
   }, [fetchItems])
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, scrollToBottom])
 
   // WebSocket Integration for real-time chat
   useEffect(() => {
@@ -263,13 +264,13 @@ const Chat = () => {
           if (payload.event === 'new_message') {
             const newMessageData = payload.data
             const isMe = String(newMessageData.sender_id || newMessageData.SenderID) === String(currentUserId);
-            
-            if (activeRoom && String(activeRoom.id || activeRoom.ID) === String(newMessageData.room_id)) {
-              fetchMessages(activeRoom.id || activeRoom.ID)
+
+            if (activeRoom && String(activeRoom.ID) === String(newMessageData.room_id)) {
+              fetchMessages(activeRoom.ID)
               if (!isMe) {
                 const newMsgId = newMessageData.id || newMessageData.ID;
                 setHighlightedMessageId(String(newMsgId));
-                
+
                 const sender = newMessageData.sender || newMessageData.Sender || {};
                 const senderName = sender.nama_lengkap || sender.username || 'Seseorang';
                 const rawMsg = newMessageData.message || '';
@@ -280,7 +281,7 @@ const Chat = () => {
                   <div className="flex flex-col min-w-[150px]">
                     <span className="font-bold text-xs text-purple-400">{senderName}</span>
                     <span className="text-[10px] text-gray-300 mt-0.5">{truncatedMsg || 'Mengirim lampiran'}</span>
-                  </div>, 
+                  </div>,
                   { duration: 2000, icon: '💬', style: { background: '#1e293b', color: '#fff', borderRadius: '12px', border: '1px solid #334155' } }
                 );
                 playNotificationSound();
@@ -300,7 +301,7 @@ const Chat = () => {
                 <div className="flex flex-col min-w-[150px]">
                   <span className="font-bold text-xs text-purple-400">{senderName}</span>
                   <span className="text-[10px] text-gray-300 mt-0.5">{truncatedMsg || 'Mengirim lampiran'}</span>
-                </div>, 
+                </div>,
                 { duration: 2000, icon: '🔔', style: { background: '#1e293b', color: '#fff', borderRadius: '12px', border: '1px solid #334155' } }
               );
               playNotificationSound();
@@ -308,7 +309,7 @@ const Chat = () => {
             fetchRooms()
           }
           if (payload.event === 'delete_message') {
-            if (activeRoom) fetchMessages(activeRoom.id || activeRoom.ID)
+            if (activeRoom) fetchMessages(activeRoom.ID)
             fetchRooms()
           }
           if (payload.event === 'read_receipt') {
@@ -384,7 +385,7 @@ const Chat = () => {
       toast.success(`Pesan diteruskan ke ${getRoomName(targetRoom)}`)
       setIsForwardModalOpen(false)
       setMessageToForward(null)
-      if (activeRoom && (activeRoom.id || activeRoom.ID) === targetRoomId) {
+      if (activeRoom && (activeRoom.ID) === targetRoomId) {
         fetchMessages(targetRoomId)
       }
     } catch (err) {
@@ -420,7 +421,7 @@ const Chat = () => {
           toast.success("Pesan-pesan berhasil dihapus")
           setSelectedMessageIds([])
           setIsSelectMode(false)
-          fetchMessages(activeRoom.id || activeRoom.ID)
+          fetchMessages(activeRoom.ID)
         } catch (err) {
           toast.error("Beberapa pesan gagal dihapus")
         }
@@ -436,7 +437,7 @@ const Chat = () => {
 
     const tempMsg = newMessage
     const currentReply = replyTo
-    const roomId = activeRoom.id || activeRoom.ID
+    const roomId = activeRoom.ID
 
     setNewMessage('')
 
@@ -470,7 +471,7 @@ const Chat = () => {
     if (!activeRoom) return
 
     let payload = {
-      room_id: activeRoom.id || activeRoom.ID,
+      room_id: activeRoom.ID,
       chat_message_type_id: 3, // Cart / Transaction Type
     }
 
@@ -500,7 +501,7 @@ const Chat = () => {
       setSelectedItem(null)
       setManualItem({ nama: '', merk: '' })
       if (window.innerWidth < 1024) setIsRightSidebarOpen(false)
-      fetchMessages(activeRoom.id || activeRoom.ID)
+      fetchMessages(activeRoom.ID)
     } catch (err) {
       console.error(err)
       toast.error("Gagal mengirim usulan")
@@ -522,7 +523,7 @@ const Chat = () => {
       }
       await axios.post(`${BaseUrl}/api/chat/cart`, payload, UserHelper.axiosConfig())
       toast.success("Barang disetujui & masuk ke troli!")
-      fetchMessages(activeRoom.id || activeRoom.ID) // Refresh to update status if needed
+      fetchMessages(activeRoom.ID) // Refresh to update status if needed
     } catch (error) {
       console.error(error)
       toast.error("Gagal menyetujui usulan")
@@ -551,7 +552,7 @@ const Chat = () => {
           const msgId = msg.id || msg.ID
           await axios.delete(`${BaseUrl}/api/chat/messages/${msgId}?mode=everyone`, UserHelper.axiosConfig())
           toast.success("Usulan berhasil ditolak")
-          fetchMessages(activeRoom.id || activeRoom.ID)
+          fetchMessages(activeRoom.ID)
         } catch (error) {
           console.error("Reject Error:", error)
           toast.error("Gagal menolak usulan")
@@ -611,7 +612,7 @@ const Chat = () => {
     try {
       await axios.delete(`${BaseUrl}/api/chat/messages/${messageId}?mode=${mode}`, UserHelper.axiosConfig())
       toast.success(mode === 'everyone' ? "Pesan ditarik" : "Pesan dihapus")
-      fetchMessages(activeRoom.id || activeRoom.ID)
+      fetchMessages(activeRoom.ID)
     } catch (error) {
       console.error(error)
       toast.error("Gagal menghapus pesan")
@@ -857,7 +858,7 @@ const Chat = () => {
 
       // 3. Kirim sebagai pesan chat
       const payload = {
-        room_id: activeRoom.id || activeRoom.ID,
+        room_id: activeRoom.ID,
         message: isImage ? `[Gambar]: ${name}` : `[File]: ${name}`,
         chat_message_type_id: messageTypeId,
         attachment_path: url
@@ -866,7 +867,7 @@ const Chat = () => {
       await axios.post(`${BaseUrl}/api/chat/messages`, payload, UserHelper.axiosConfig())
 
       toast.success("File berhasil terkirim", { id: loadingToast })
-      fetchMessages(activeRoom.id || activeRoom.ID)
+      fetchMessages(activeRoom.ID)
     } catch (err) {
       console.error("Upload Error:", err)
       toast.error("Gagal mengirim file", { id: loadingToast })
@@ -1059,8 +1060,8 @@ const Chat = () => {
                 // Ambil data room terbaru dari state rooms
                 const currentRoomData = rooms.find(r => (r.id || r.ID) === (activeRoom?.id || activeRoom?.ID)) || activeRoom
                 // Cek apakah ada member lain yang last_read_message_id nya >= msgId
-                const isRead = currentRoomData?.members?.some(m => 
-                  String(m.user_id || m.UserID) !== String(currentUserId) && 
+                const isRead = currentRoomData?.members?.some(m =>
+                  String(m.user_id || m.UserID) !== String(currentUserId) &&
                   (m.last_read_message_id || m.LastReadMessageID || 0) >= msgId
                 ) || false;
 
@@ -1086,349 +1087,349 @@ const Chat = () => {
                       </div>
                     )}
                     <div className={`flex gap-3 md:gap-4 ${isMe ? 'flex-row-reverse' : ''} ${isSelectMode ? 'cursor-pointer hover:bg-purple-600/5' : ''} ${String(highlightedMessageId) === String(msgId) ? 'ring-2 ring-purple-500 bg-purple-600/20 rounded-2xl p-2 transition-all duration-500' : 'transition-all duration-500'}`} onClick={() => isSelectMode && toggleMessageSelection(msgId)}>
-                    {isSelectMode && (
-                      <div className="flex items-center justify-center px-2">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedMessageIds.includes(msgId) ? 'bg-purple-600 border-purple-500' : 'border-gray-600'}`}>
-                          {selectedMessageIds.includes(msgId) && <HiCheckCircle className="text-white w-4 h-4" />}
+                      {isSelectMode && (
+                        <div className="flex items-center justify-center px-2">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedMessageIds.includes(msgId) ? 'bg-purple-600 border-purple-500' : 'border-gray-600'}`}>
+                            {selectedMessageIds.includes(msgId) && <HiCheckCircle className="text-white w-4 h-4" />}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 border border-gray-700 overflow-hidden">
-                      {(() => {
-                        const sender = msg.sender || msg.Sender
-                        const pic = getProfilePic(isMe ? user : sender)
-                        return pic ? <img src={pic} alt="sender" className="w-full h-full object-cover" /> : <HiUser className="w-5 h-5 md:w-6 md:h-6" />
-                      })()}
-                    </div>
-
-                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-[75%] lg:max-w-[65%]`}>
-                      {!isMe && (
-                        <span className="text-[10px] md:text-[11px] font-bold text-purple-400 mb-1 px-1">
-                          {((msg.sender?.username || msg.Sender?.username) || (msg.sender?.nama_lengkap || msg.Sender?.nama_lengkap))}
-                        </span>
                       )}
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 border border-gray-700 overflow-hidden">
+                        {(() => {
+                          const sender = msg.sender || msg.Sender
+                          const pic = getProfilePic(isMe ? user : sender)
+                          return pic ? <img src={pic} alt="sender" className="w-full h-full object-cover" /> : <HiUser className="w-5 h-5 md:w-6 md:h-6" />
+                        })()}
+                      </div>
 
-                      <div className="group relative">
-                        {msg.chat_message_type_id === 3 ? (
-                          <div
-                            onClick={() => setReplyTo(msg)}
-                            className={`group relative p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg ${isMe
-                              ? 'bg-purple-900/60 border-purple-500/30 text-white rounded-tr-none shadow-purple-900/10'
-                              : 'bg-[#1e293b] border-gray-700 text-gray-200 rounded-tl-none'
-                              }`}>
-                            {msg.message?.startsWith('[Forwarded]:') && (
-                              <div className="flex items-center gap-1.5 mb-2 text-white/40 italic">
-                                <HiShare className="w-2.5 h-2.5" />
-                                <span className="text-[9px]">Forwarded</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="p-2 bg-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
-                                <HiShoppingCart className="text-white w-4 h-4" />
-                              </div>
-                              <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">Pengajuan Barang</span>
-                            </div>
-                            {pinnedMessageIds.includes(msgId) && (
-                              <div className="flex items-center gap-1 mb-1 opacity-80">
-                                <HiBookmark className="w-2.5 h-2.5 text-blue-400" />
-                                <span className="text-[8px] text-blue-400 font-bold uppercase tracking-widest">Pinned</span>
-                              </div>
-                            )}
-                            <p className="text-sm font-bold mb-1 whitespace-pre-wrap leading-relaxed">
-                              {msg.message?.startsWith('[Forwarded]:') ? msg.message.replace('[Forwarded]:', '').trim() : msg.message}
-                            </p>
+                      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-[75%] lg:max-w-[65%]`}>
+                        {!isMe && (
+                          <span className="text-[10px] md:text-[11px] font-bold text-purple-400 mb-1 px-1">
+                            {((msg.sender?.username || msg.Sender?.username) || (msg.sender?.nama_lengkap || msg.Sender?.nama_lengkap))}
+                          </span>
+                        )}
 
-                            <div className="flex items-center justify-between mt-3">
-                              {!isMe && canApproveReject(user) && (
-                                <div className="flex gap-2 flex-1 mr-4">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleApproveProposal(msg); }}
-                                    className="flex-1 bg-green-600 hover:bg-green-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all shadow-md"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleRejectProposal(msg); }}
-                                    className="flex-1 bg-gray-800 hover:bg-gray-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all text-gray-400 border border-gray-700"
-                                  >
-                                    Reject
-                                  </button>
+                        <div className="group relative">
+                          {msg.chat_message_type_id === 3 ? (
+                            <div
+                              onClick={() => setReplyTo(msg)}
+                              className={`group relative p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg ${isMe
+                                ? 'bg-purple-900/60 border-purple-500/30 text-white rounded-tr-none shadow-purple-900/10'
+                                : 'bg-[#1e293b] border-gray-700 text-gray-200 rounded-tl-none'
+                                }`}>
+                              {msg.message?.startsWith('[Forwarded]:') && (
+                                <div className="flex items-center gap-1.5 mb-2 text-white/40 italic">
+                                  <HiShare className="w-2.5 h-2.5" />
+                                  <span className="text-[9px]">Forwarded</span>
                                 </div>
                               )}
-                              <div className={`flex items-center gap-1.5 shrink-0 ${isMe ? 'w-full justify-end' : ''}`}>
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-purple-600 rounded-lg shadow-lg shadow-purple-900/20">
+                                  <HiShoppingCart className="text-white w-4 h-4" />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">Pengajuan Barang</span>
+                              </div>
+                              {pinnedMessageIds.includes(msgId) && (
+                                <div className="flex items-center gap-1 mb-1 opacity-80">
+                                  <HiBookmark className="w-2.5 h-2.5 text-blue-400" />
+                                  <span className="text-[8px] text-blue-400 font-bold uppercase tracking-widest">Pinned</span>
+                                </div>
+                              )}
+                              <p className="text-sm font-bold mb-1 whitespace-pre-wrap leading-relaxed">
+                                {msg.message?.startsWith('[Forwarded]:') ? msg.message.replace('[Forwarded]:', '').trim() : msg.message}
+                              </p>
+
+                              <div className="flex items-center justify-between mt-3">
+                                {!isMe && canApproveReject(user) && (
+                                  <div className="flex gap-2 flex-1 mr-4">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleApproveProposal(msg); }}
+                                      className="flex-1 bg-green-600 hover:bg-green-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all shadow-md"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleRejectProposal(msg); }}
+                                      className="flex-1 bg-gray-800 hover:bg-gray-700 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all text-gray-400 border border-gray-700"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                )}
+                                <div className={`flex items-center gap-1.5 shrink-0 ${isMe ? 'w-full justify-end' : ''}`}>
+                                  {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                                  <span className="text-[9px] text-gray-500 font-medium">{moment(msg.created_at || msg.CreatedAt).format('HH:mm')}</span>
+                                  {isMe && (
+                                    <div className="flex -space-x-1.5">
+                                      <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
+                                      <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* WhatsApp Style Action Menu */}
+                              <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(activeMenuId === msgId ? null : msgId);
+                                  }}
+                                  className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
+                                >
+                                  <HiChevronDown className="w-4 h-4" />
+                                </button>
+
+                                {activeMenuId === msgId && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setReplyTo(msg);
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiReply className="w-4 h-4 text-gray-400" /> Reply
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleCopyMessage(e, msg)}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMessageToForward(msg);
+                                        setIsForwardModalOpen(true);
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiShare className="w-4 h-4 text-gray-400" /> Forward
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (pinnedMessageIds.includes(msgId)) {
+                                          setPinnedMessageIds(pinnedMessageIds.filter(id => id !== msgId));
+                                          toast.success("Pin dilepas");
+                                        } else {
+                                          setPinnedMessageIds([...pinnedMessageIds, msgId]);
+                                          toast.success("Pesan disematkan");
+                                        }
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiBookmark className={`w-4 h-4 ${pinnedMessageIds.includes(msgId) ? 'text-blue-400' : 'text-gray-400'}`} /> {pinnedMessageIds.includes(msgId) ? 'Unpin' : 'Pin'}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (starredMessageIds.includes(msgId)) {
+                                          setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
+                                          toast.success("Bintang dihapus");
+                                        } else {
+                                          setStarredMessageIds([...starredMessageIds, msgId]);
+                                          toast.success("Pesan ditandai bintang");
+                                        }
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
+                                    </button>
+                                    <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
+                                    <button
+                                      onClick={() => { handleShowDeleteOptions(msg); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiTrash className="w-4 h-4" /> Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => setReplyTo(msg)}
+                              className={`group relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:shadow-md ${isMe
+                                ? 'bg-purple-600 text-white rounded-tr-none shadow-purple-900/20'
+                                : 'bg-[#1e293b] text-gray-200 rounded-tl-none border border-gray-700'
+                                }`}
+                            >
+                              {msg.message?.startsWith('[Forwarded]:') && (
+                                <div className="flex items-center gap-1.5 mb-1.5 text-white/40 italic">
+                                  <HiShare className="w-3 h-3" />
+                                  <span className="text-[10px]">Forwarded</span>
+                                </div>
+                              )}
+
+                              {msg.attachment_path && (
+                                <div className="mb-2 overflow-hidden rounded-lg">
+                                  {msg.chat_message_type_id === 2 ? (
+                                    <a href={`${BaseUrl}${msg.attachment_path}`} target="_blank" rel="noreferrer">
+                                      <img
+                                        src={`${BaseUrl}${msg.attachment_path}`}
+                                        alt="attachment"
+                                        className="max-w-full max-h-60 md:max-h-80 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-500"
+                                      />
+                                    </a>
+                                  ) : (
+                                    <a
+                                      href={`${BaseUrl}${msg.attachment_path}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 hover:bg-black/50 transition-all group"
+                                    >
+                                      <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                        <HiDocumentText className="w-6 h-6" />
+                                      </div>
+                                      <div className="flex-1 min-w-0 pr-4">
+                                        <p className="text-[11px] md:text-xs font-bold text-white truncate">{msg.message?.replace('[File]: ', '') || 'Document'}</p>
+                                        <p className="text-[9px] text-gray-500 uppercase font-black tracking-tighter">Download File</p>
+                                      </div>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+
+                              {(() => {
+                                const cleanMsg = msg.message?.startsWith(CHAT_CONSTANTS.FWD_PREFIX)
+                                  ? msg.message.replace(CHAT_CONSTANTS.FWD_PREFIX, '').trim()
+                                  : msg.message;
+
+                                if (msg.attachment_path && (cleanMsg.startsWith('[Gambar]:') || cleanMsg.startsWith('[File]:'))) {
+                                  return null;
+                                }
+
+                                return cleanMsg?.startsWith(CHAT_CONSTANTS.REPLY_PREFIX) ? (
+                                  <div className="flex flex-col gap-2">
+                                    <div className={`border-l-4 p-3 rounded-lg text-[11px] italic mb-1 leading-relaxed shadow-inner ${isMe ? 'bg-black/30 border-purple-300 opacity-90' : 'bg-black/40 border-purple-500 opacity-80'
+                                      }`}>
+                                      {cleanMsg.split('\n\n')[0].substring(CHAT_CONSTANTS.REPLY_PREFIX.length)}
+                                    </div>
+                                    <div className="whitespace-pre-wrap leading-relaxed">
+                                      {cleanMsg.split('\n\n').slice(1).join('\n\n')}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="whitespace-pre-wrap leading-relaxed">{cleanMsg}</div>
+                                );
+                              })()}
+
+                              <div className="flex items-center justify-end gap-1.5 mt-1.5">
                                 {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
-                                <span className="text-[9px] text-gray-500 font-medium">{moment(msg.created_at || msg.CreatedAt).format('HH:mm')}</span>
+                                <span className={`text-[9px] font-medium ${isMe ? 'text-purple-200' : 'text-gray-500'}`}>
+                                  {moment(msg.created_at || msg.CreatedAt).format('HH:mm')}
+                                </span>
                                 {isMe && (
                                   <div className="flex -space-x-1.5">
-                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
-                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-gray-500'}`} />
+                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
+                                    <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
+                                  </div>
+                                )}
+                              </div>
+
+                              {pinnedMessageIds.includes(msgId) && (
+                                <div className="flex items-center gap-1 mt-1 opacity-60">
+                                  <HiBookmark className="w-2 h-2 text-blue-400" />
+                                  <span className="text-[7px] text-blue-400 font-bold uppercase">Pinned</span>
+                                </div>
+                              )}
+
+                              {/* WhatsApp Style Action Menu */}
+                              <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(activeMenuId === msgId ? null : msgId);
+                                  }}
+                                  className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
+                                >
+                                  <HiChevronDown className="w-4 h-4" />
+                                </button>
+
+                                {activeMenuId === msgId && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setReplyTo(msg);
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiReply className="w-4 h-4 text-gray-400" /> Reply
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleCopyMessage(e, msg)}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMessageToForward(msg);
+                                        setIsForwardModalOpen(true);
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiShare className="w-4 h-4 text-gray-400" /> Forward
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (starredMessageIds.includes(msgId)) {
+                                          setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
+                                          toast.success("Bintang dihapus");
+                                        } else {
+                                          setStarredMessageIds([...starredMessageIds, msgId]);
+                                          toast.success("Pesan ditandai bintang");
+                                        }
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
+                                    </button>
+                                    <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); setActiveMenuId(null); }}
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
+                                    >
+                                      <HiTrash className="w-4 h-4" /> Delete
+                                    </button>
                                   </div>
                                 )}
                               </div>
                             </div>
-
-                            {/* WhatsApp Style Action Menu */}
-                            <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuId(activeMenuId === msgId ? null : msgId);
-                                }}
-                                className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
-                              >
-                                <HiChevronDown className="w-4 h-4" />
-                              </button>
-
-                              {activeMenuId === msgId && (
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
-                                >
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setReplyTo(msg);
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiReply className="w-4 h-4 text-gray-400" /> Reply
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleCopyMessage(e, msg)}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMessageToForward(msg);
-                                      setIsForwardModalOpen(true);
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiShare className="w-4 h-4 text-gray-400" /> Forward
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (pinnedMessageIds.includes(msgId)) {
-                                        setPinnedMessageIds(pinnedMessageIds.filter(id => id !== msgId));
-                                        toast.success("Pin dilepas");
-                                      } else {
-                                        setPinnedMessageIds([...pinnedMessageIds, msgId]);
-                                        toast.success("Pesan disematkan");
-                                      }
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiBookmark className={`w-4 h-4 ${pinnedMessageIds.includes(msgId) ? 'text-blue-400' : 'text-gray-400'}`} /> {pinnedMessageIds.includes(msgId) ? 'Unpin' : 'Pin'}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (starredMessageIds.includes(msgId)) {
-                                        setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
-                                        toast.success("Bintang dihapus");
-                                      } else {
-                                        setStarredMessageIds([...starredMessageIds, msgId]);
-                                        toast.success("Pesan ditandai bintang");
-                                      }
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
-                                  </button>
-                                  <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
-                                  <button
-                                    onClick={() => { handleShowDeleteOptions(msg); setActiveMenuId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiTrash className="w-4 h-4" /> Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() => setReplyTo(msg)}
-                            className={`group relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-xs md:text-sm leading-relaxed shadow-sm cursor-pointer transition-all hover:shadow-md ${isMe
-                              ? 'bg-purple-600 text-white rounded-tr-none shadow-purple-900/20'
-                              : 'bg-[#1e293b] text-gray-200 rounded-tl-none border border-gray-700'
-                              }`}
-                          >
-                            {msg.message?.startsWith('[Forwarded]:') && (
-                              <div className="flex items-center gap-1.5 mb-1.5 text-white/40 italic">
-                                <HiShare className="w-3 h-3" />
-                                <span className="text-[10px]">Forwarded</span>
-                              </div>
-                            )}
-
-                            {msg.attachment_path && (
-                              <div className="mb-2 overflow-hidden rounded-lg">
-                                {msg.chat_message_type_id === 2 ? (
-                                  <a href={`${BaseUrl}${msg.attachment_path}`} target="_blank" rel="noreferrer">
-                                    <img
-                                      src={`${BaseUrl}${msg.attachment_path}`}
-                                      alt="attachment"
-                                      className="max-w-full max-h-60 md:max-h-80 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-500"
-                                    />
-                                  </a>
-                                ) : (
-                                  <a
-                                    href={`${BaseUrl}${msg.attachment_path}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-3 p-3 bg-black/30 rounded-xl border border-white/5 hover:bg-black/50 transition-all group"
-                                  >
-                                    <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
-                                      <HiDocumentText className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1 min-w-0 pr-4">
-                                      <p className="text-[11px] md:text-xs font-bold text-white truncate">{msg.message?.replace('[File]: ', '') || 'Document'}</p>
-                                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-tighter">Download File</p>
-                                    </div>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-
-                            {(() => {
-                              const cleanMsg = msg.message?.startsWith(CHAT_CONSTANTS.FWD_PREFIX)
-                                ? msg.message.replace(CHAT_CONSTANTS.FWD_PREFIX, '').trim()
-                                : msg.message;
-
-                              if (msg.attachment_path && (cleanMsg.startsWith('[Gambar]:') || cleanMsg.startsWith('[File]:'))) {
-                                return null;
-                              }
-
-                              return cleanMsg?.startsWith(CHAT_CONSTANTS.REPLY_PREFIX) ? (
-                                <div className="flex flex-col gap-2">
-                                  <div className={`border-l-4 p-3 rounded-lg text-[11px] italic mb-1 leading-relaxed shadow-inner ${isMe ? 'bg-black/30 border-purple-300 opacity-90' : 'bg-black/40 border-purple-500 opacity-80'
-                                    }`}>
-                                    {cleanMsg.split('\n\n')[0].substring(CHAT_CONSTANTS.REPLY_PREFIX.length)}
-                                  </div>
-                                  <div className="whitespace-pre-wrap leading-relaxed">
-                                    {cleanMsg.split('\n\n').slice(1).join('\n\n')}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="whitespace-pre-wrap leading-relaxed">{cleanMsg}</div>
-                              );
-                            })()}
-
-                            <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                              {starredMessageIds.includes(msgId) && <HiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
-                              <span className={`text-[9px] font-medium ${isMe ? 'text-purple-200' : 'text-gray-500'}`}>
-                                {moment(msg.created_at || msg.CreatedAt).format('HH:mm')}
-                              </span>
-                              {isMe && (
-                                <div className="flex -space-x-1.5">
-                                  <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
-                                  <HiCheck className={`w-3 h-3 ${isRead ? 'text-blue-400' : 'text-purple-300/70'}`} />
-                                </div>
-                              )}
-                            </div>
-
-                            {pinnedMessageIds.includes(msgId) && (
-                              <div className="flex items-center gap-1 mt-1 opacity-60">
-                                <HiBookmark className="w-2 h-2 text-blue-400" />
-                                <span className="text-[7px] text-blue-400 font-bold uppercase">Pinned</span>
-                              </div>
-                            )}
-
-                            {/* WhatsApp Style Action Menu */}
-                            <div className={`absolute top-1 ${isMe ? 'left-[-32px]' : 'right-[-32px]'} z-30 opacity-0 group-hover:opacity-100 transition-opacity`}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuId(activeMenuId === msgId ? null : msgId);
-                                }}
-                                className="p-1 rounded-full bg-gray-800/90 text-gray-400 hover:text-white shadow-xl backdrop-blur-sm border border-gray-700"
-                              >
-                                <HiChevronDown className="w-4 h-4" />
-                              </button>
-
-                              {activeMenuId === msgId && (
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} w-48 bg-[#232d36]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200`}
-                                >
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setReplyTo(msg);
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiReply className="w-4 h-4 text-gray-400" /> Reply
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleCopyMessage(e, msg)}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiDuplicate className="w-4 h-4 text-gray-400" /> Copy
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMessageToForward(msg);
-                                      setIsForwardModalOpen(true);
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiShare className="w-4 h-4 text-gray-400" /> Forward
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (starredMessageIds.includes(msgId)) {
-                                        setStarredMessageIds(starredMessageIds.filter(id => id !== msgId));
-                                        toast.success("Bintang dihapus");
-                                      } else {
-                                        setStarredMessageIds([...starredMessageIds, msgId]);
-                                        toast.success("Pesan ditandai bintang");
-                                      }
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiStar className={`w-4 h-4 ${starredMessageIds.includes(msgId) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} /> {starredMessageIds.includes(msgId) ? 'Unstar' : 'Star'}
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setIsSelectMode(true); toggleMessageSelection(msgId); setActiveMenuId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-gray-200 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiCheckCircle className="w-4 h-4 text-gray-400" /> Select
-                                  </button>
-                                  <div className="h-[1px] bg-gray-700/50 my-1 mx-2" />
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleShowDeleteOptions(msg); setActiveMenuId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-400 hover:bg-[#101921] transition-colors"
-                                  >
-                                    <HiTrash className="w-4 h-4" /> Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
                   </div>
                 )
               })}
@@ -1633,7 +1634,7 @@ const Chat = () => {
 
                   {activeRoom.chat_room_type_id === 1 ? (
                     <button
-                      onClick={() => handleDeleteRoom(activeRoom.id || activeRoom.ID)}
+                      onClick={() => handleDeleteRoom(activeRoom.ID)}
                       className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
                     >
                       <HiTrash className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -1646,7 +1647,7 @@ const Chat = () => {
                     <>
                       {(activeRoom.created_by || activeRoom.CreatedBy) === currentUserId ? (
                         <button
-                          onClick={() => handleDeleteRoom(activeRoom.id || activeRoom.ID)}
+                          onClick={() => handleDeleteRoom(activeRoom.ID)}
                           className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
                         >
                           <HiTrash className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -1657,7 +1658,7 @@ const Chat = () => {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleLeaveRoom(activeRoom.id || activeRoom.ID)}
+                          onClick={() => handleLeaveRoom(activeRoom.ID)}
                           className="w-full flex items-center gap-3 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all border border-red-500/20 group"
                         >
                           <HiLogout className="w-5 h-5 group-hover:scale-110 transition-transform" />
