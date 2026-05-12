@@ -45,9 +45,51 @@ function Header() {
       }
     }
 
+    // Fetch awal saat mount
     fetchUnread()
-    const interval = setInterval(fetchUnread, 10000)
-    return () => clearInterval(interval)
+
+    // WebSocket: listen event chat lalu re-fetch unread
+    if (!BaseUrl) return
+    let socket = null
+    let reconnectTimer = null
+
+    const connectWS = () => {
+      const wsUrl = BaseUrl.replace('http', 'ws').replace('https', 'wss') + '/api/ws'
+      socket = new WebSocket(wsUrl)
+
+      socket.onopen = () => {
+        // Sync ulang saat berhasil konek/reconnect
+        fetchUnread()
+      }
+
+      socket.onclose = () => {
+        // Auto-reconnect setelah 3 detik
+        reconnectTimer = setTimeout(() => {
+          connectWS()
+        }, 3000)
+      }
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data)
+          if (['new_message', 'delete_message', 'read_receipt'].includes(payload.event)) {
+            fetchUnread()
+          }
+        } catch (_err) {
+          // Silently fail
+        }
+      }
+    }
+
+    connectWS()
+
+    return () => {
+      if (socket) {
+        socket.onclose = null // cegah reconnect loop saat unmount
+        socket.close()
+      }
+      clearTimeout(reconnectTimer)
+    }
   }, [])
 
   const handleSearch = (e) => {

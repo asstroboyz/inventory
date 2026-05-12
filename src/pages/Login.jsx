@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { HiEye, HiEyeOff } from 'react-icons/hi'
 import toast from 'react-hot-toast'
 import { UserHelper } from '../helper/user'
 import ImageLight from '../assets/img/login-office.jpeg'
 import ImageDark from '../assets/img/login-office-dark.jpeg'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.100:8080'
 
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  
+
   // Tampilkan toast jika ada state registered dari navigate
   useEffect(() => {
     if (location.state?.registered) {
@@ -51,7 +53,7 @@ function Login() {
       toast.success(`Selamat datang kembali, ${UserHelper.getNickname() || 'User'}!`)
       navigate('/dashboard')
     } catch (err) {
-      toast.error('Tidak dapat terhubung ke server. Periksa koneksi Anda.',err.message)
+      toast.error('Tidak dapat terhubung ke server. Periksa koneksi Anda.', err.message)
     } finally {
       setLoading(false)
     }
@@ -107,27 +109,27 @@ function Login() {
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Password
-                    </label>
-                    <Link
-                      className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-colors"
-                      to="/forgot-password"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
                   <input
-                    className="form-input"
+                    className="form-input pr-10"
                     placeholder="••••••••"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <button type="button" className="absolute inset-y-0 right-0 flex items-center px-2" onClick={() => setShowPassword(prev => !prev)}>
+                    {showPassword ? <HiEyeOff className="w-5 h-5 text-gray-500" /> : <HiEye className="w-5 h-5 text-gray-500" />}
+                  </button>
                 </div>
+<div className="mt-2 text-right">
+  <Link className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-colors" to="/forgot-password">
+    Forgot password?
+  </Link>
+</div>
 
                 <button
                   type="submit"

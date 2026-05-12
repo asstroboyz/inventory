@@ -2,7 +2,27 @@
 
 ---
 
-### **Mei 10, 2026**
+### **Mei 12, 2026**
+- **Inventory & Inspection UX**:
+    *   **Smart Inspection Warning System**: Implementasi kolom **"Pemeriksaan"** pada tabel Stok Inventaris yang otomatis menganalisis riwayat inspeksi terakhir.
+    *   **Visual Alert Indicators**: 
+        - Badge status warna-warni (🔴 Terlambat, 🟡 Segera, 🟢 Aman) untuk identifikasi cepat jadwal pemeliharaan.
+        - Penambahan **Pulse Animation** (titik berkedip) pada status krusial untuk menarik perhatian operator secara instan.
+        - Tooltip/Sub-label dinamis yang menunjukkan selisih hari (misal: "3 hari lagi" atau "12 hari lalu").
+- **Real-time Connectivity & Performance**:
+    *   **Header WebSocket Sync**: Migrasi total sistem notifikasi unread chat di Header dari *polling* 10 detik ke **WebSocket Event-Driven**. Update jumlah pesan kini terjadi dalam milidetik tanpa beban request berkala ke server.
+    *   **Resilient Connection Logic**: Implementasi mekanisme *auto-reconnect* pintar pada Header untuk menjamin sinkronisasi data tetap berjalan meskipun koneksi internet sempat terganggu.
+- **Authentication & Security UX**:
+    *   **Enhanced Login Security**: 
+        - Penambahan fitur **Show/Hide Password** dengan ikon mata interaktif untuk kenyamanan input pengguna.
+        - Refactoring layout form login dengan memindahkan link "Lupa Password" ke bawah input field untuk tampilan yang lebih bersih dan ergonomis.
+    *   **Functional Password Recovery**: 
+        - Aktivasi fitur **Lupa Password** dengan UI premium (glassmorphism & responsive layout).
+        - Integrasi alur reset password otomatis berbasis **Tanggal Lahir (YYYYMMDD)** yang disinkronkan langsung dengan database pusat.
+        - Feedback visual menggunakan *React Hot Toast* untuk setiap status permintaan pemulihan akun.
+
+---
+
 - **Chat UX & Notifications System**:
     - **Read Receipt Integration**: Implementasi status pesan ala WhatsApp (centang dua abu/ungu untuk *terkirim*, centang dua biru untuk *dibaca*) berbasis data `last_read_message_id`.
     - **Intelligent Audio & Visual Notifs**: 

@@ -5,7 +5,7 @@ import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiBriefcase, HiSearch, HiPencil, HiX, HiChevronLeft, HiChevronRight } from 'react-icons/hi'
+import { HiBriefcase, HiSearch, HiPencil, HiX, HiChevronLeft, HiChevronRight, HiExclamation, HiClock, HiCheckCircle } from 'react-icons/hi'
 
 
 const StokInventaris = () => {
@@ -35,11 +35,118 @@ const StokInventaris = () => {
     { label: 'Rusak Berat', value: 'Rusak Berat' }
   ]
 
+  // Helper: cek status pemeriksaan berikutnya
+  const toDateOnly = (value) => {
+    if (!value) return null
 
+    const date = new Date(value)
 
+    if (Number.isNaN(date.getTime())) {
+      return null
+    }
 
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
 
+  const getPemeriksaanStatus = (listPemeriksaan) => {
+    if (!Array.isArray(listPemeriksaan) || listPemeriksaan.length === 0) {
+      return {
+        status: "none",
+        label: "Belum Ada",
+        sublabel: null,
+        color: "gray",
+        nextDate: null,
+        latest: null,
+      }
+    }
 
+    const sorted = [...listPemeriksaan].sort((a, b) => {
+      const dateA = new Date(a?.tanggal_pemeriksaan || a?.created_at || 0)
+      const dateB = new Date(b?.tanggal_pemeriksaan || b?.created_at || 0)
+
+      return dateB - dateA
+    })
+
+    const latest = sorted[0]
+    const nextDate = toDateOnly(latest?.tanggal_pemeriksaan_berikutnya)
+
+    if (!nextDate) {
+      return {
+        status: "none",
+        label: "Belum Dijadwalkan",
+        sublabel: null,
+        color: "gray",
+        nextDate: null,
+        latest,
+      }
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const diffMs = nextDate.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) {
+      return {
+        status: "overdue",
+        label: "Terlambat",
+        sublabel: `${Math.abs(diffDays)} hari lalu`,
+        color: "red",
+        nextDate,
+        latest,
+      }
+    }
+
+    if (diffDays === 0) {
+      return {
+        status: "today",
+        label: "Hari Ini",
+        sublabel: "Jatuh tempo",
+        color: "amber",
+        nextDate,
+        latest,
+      }
+    }
+
+    if (diffDays <= 30) {
+      return {
+        status: "soon",
+        label: "Segera",
+        sublabel: `${diffDays} hari lagi`,
+        color: "amber",
+        nextDate,
+        latest,
+      }
+    }
+
+    return {
+      status: "ok",
+      label: "Aman",
+      sublabel: `${diffDays} hari lagi`,
+      color: "green",
+      nextDate,
+      latest,
+    }
+  }
+
+  const getPemeriksaanBadgeClass = (status) => {
+    switch (status) {
+      case "overdue":
+        return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+
+      case "today":
+      case "soon":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+
+      case "ok":
+        return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+
+      default:
+        return "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+    }
+  }
   const [formData, setFormData] = useState({
     master_barang_id: '',
     satuan_id: '',
@@ -214,7 +321,7 @@ const StokInventaris = () => {
     try {
       const url = `${BaseUrl}/api/record/inventaris/`
       const method = editingId ? 'PUT' : 'POST'
-      
+
       let payload = editingId ? { ...formData, id: editingId } : { ...formData }
 
       // Jika Create Baru, wajib sertakan pemeriksaan awal sesuai DTO
@@ -287,14 +394,15 @@ const StokInventaris = () => {
                   <th className="px-6 py-4 text-left">Nama Aset</th>
                   <th className="px-6 py-4 text-left">Lokasi</th>
                   <th className="px-6 py-4 text-left">Kondisi</th>
+                  <th className="px-6 py-4 text-left">Pemeriksaan</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {loading ? (
-                  <tr><td colSpan="6" className="px-6 py-10 text-center">Memuat...</td></tr>
+                  <tr><td colSpan="8" className="px-6 py-10 text-center">Memuat...</td></tr>
                 ) : data.length === 0 ? (
-                  <tr><td colSpan="6" className="px-6 py-10 text-center">Tidak ada data.</td></tr>
+                  <tr><td colSpan="8" className="px-6 py-10 text-center">Tidak ada data.</td></tr>
                 ) : (
                   data.map((row, index) => (
 
@@ -317,6 +425,39 @@ const StokInventaris = () => {
                       <td className="px-6 py-4">{row.ruangan?.nama_ruangan || '-'}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.kondisi === 'Baik' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>{row.kondisi}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {(() => {
+                          const pStatus = getPemeriksaanStatus(row.list_pemeriksaan)
+                          const isAlert = pStatus.status === "overdue" || pStatus.status === "soon" || pStatus.status === "today"
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`relative flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[10px] font-bold ${getPemeriksaanBadgeClass(pStatus.status)}`}
+                              >
+                                {isAlert && (
+                                  <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+                                    <span className="relative inline-flex h-3 w-3 rounded-full" />
+                                  </span>
+                                )}
+
+                                {pStatus.status === "overdue" && <HiExclamation className="h-3.5 w-3.5" />}
+                                {(pStatus.status === "soon" || pStatus.status === "today" || pStatus.status === "none") && <HiClock className="h-3.5 w-3.5" />}
+                                {pStatus.status === "ok" && <HiCheckCircle className="h-3.5 w-3.5" />}
+
+                                <span>{pStatus.label}</span>
+                              </div>
+
+                              {pStatus.sublabel && (
+                                <span className="whitespace-nowrap text-[9px] text-gray-400 dark:text-gray-500">
+                                  {pStatus.sublabel}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button onClick={() => openModal(row)} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"><HiPencil className="w-5 h-5" /></button>
