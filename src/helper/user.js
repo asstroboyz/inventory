@@ -40,6 +40,12 @@ export const UserHelper = {
   getNickname: () => UserHelper.getUser()?.username || '',
   getEmail: () => UserHelper.getUser()?.email || '',
   getOtoritas: () => UserHelper.getUser()?.otoritas || null,
+  getOtoritasId: () => UserHelper.getUser()?.otoritas_id || null,
+  getUserId: () => UserHelper.getUser()?.ID || null,
+
+  // --- Role Checks ---
+  isStaff: () => UserHelper.getOtoritasId() === 6,
+  isApprover: () => [1, 2, 3].includes(UserHelper.getOtoritasId()),
 
   // --- Header Helpers ---
   authHeader: () => ({

@@ -9,46 +9,48 @@ const TransIn = () => {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const [expandedId, setExpandedId] = useState(null)
+  const [totalItems, setTotalItems] = useState(0)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal) => {
     setLoading(true)
     try {
-      const res = await fetch(`${BaseUrl}/api/record/trans-in/`, {
-        headers: UserHelper.authHeader()
+      const res = await fetch(`${BaseUrl}/api/record/trans-in/cari`, {
+        method: 'POST',
+        headers: UserHelper.jsonHeader(),
+        signal,
+        body: JSON.stringify({
+          limit: itemsPerPage.toString(),
+          page: currentPage.toString(),
+          order: "id desc",
+          search: searchTerm || null
+        })
       })
       const result = await res.json()
       if (res.ok) {
         setData(result.data || [])
+        setTotalItems(result.total || 0)
       } else {
         toast.error(result.message || 'Gagal mengambil data')
       }
-    } catch {
+    } catch (err) {
+      if (err.name === 'AbortError') return
       toast.error('Koneksi ke server terputus')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, itemsPerPage, searchTerm])
 
   useEffect(() => {
-    fetchData()
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
   }, [fetchData])
 
-  const filteredData = useMemo(() => {
-    return data.filter(item =>
-      (item.no_referensi || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.keterangan || '').toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [data, searchTerm])
-
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredData.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredData, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-'
@@ -83,12 +85,15 @@ const TransIn = () => {
             <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Cari No. Referensi atau Keterangan..."
+              placeholder="Cari... (Enter untuk mencari)"
               className="w-full pl-12 pr-4 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-green-500/20 transition-all shadow-sm"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setSearchTerm(searchQuery)
+                  setCurrentPage(1)
+                }
               }}
             />
           </div>
@@ -118,7 +123,7 @@ const TransIn = () => {
                       </div>
                     </td>
                   </tr>
-                ) : paginatedData.length === 0 ? (
+                ) : data.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center gap-4 opacity-40">
@@ -130,7 +135,7 @@ const TransIn = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedData.map((row, index) => (
+                  data.map((row, index) => (
                     <Fragment key={row.ID || index}>
                       <tr
                         onClick={() => toggleExpand(row.ID)}
@@ -155,10 +160,22 @@ const TransIn = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-[10px] font-bold text-green-600">
-                              {row.user?.nama?.charAt(0) || 'U'}
+                            <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-[10px] font-bold text-green-600 overflow-hidden ring-2 ring-white dark:ring-gray-800">
+                              {row.user?.berkas?.find(b => b.jenis === 'foto_profil') ? (
+                                <img 
+                                  src={`${BaseUrl}${row.user.berkas.find(b => b.jenis === 'foto_profil').path}`} 
+                                  className="w-full h-full object-cover" 
+                                  alt={row.user?.nama_depan} 
+                                />
+                              ) : (
+                                <img 
+                                  src={row.user?.jenis_kelamin === 'P' ? '/woman.png' : '/boy.png'} 
+                                  className="w-full h-full object-cover" 
+                                  alt="Avatar" 
+                                />
+                              )}
                             </div>
-                            <span className="text-sm font-semibold">{row.user?.nama || 'System'}</span>
+                            <span className="text-sm font-semibold">{row.user?.nama_depan + ' ' + row.user?.nama_belakang || 'System'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -249,7 +266,8 @@ const TransIn = () => {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes slide-down {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }

@@ -2,6 +2,24 @@
 
 ---
 
+### **Mei 14, 2026**
+- **Pure UI/UX Overhaul - Pengadaan (Procurement) Module**:
+    *   **Premium Transaction Form UX**: Implementasi modal pengadaan baru dengan sistem **Dynamic Row**; memungkinkan penambahan/penghapusan baris item secara instan tanpa *page reload*.
+    *   **Strategic Layout Optimization**: 
+        - Pemindahan data **Spesifikasi** ke kolom mandiri (**Dedicated Column**) untuk menghilangkan tumpukan teks dan meningkatkan keterbacaan data item.
+        - Re-strukturisasi identitas barang dengan format `[KODE] - Nama Barang` (Dash Separator) untuk kejelasan visual yang lebih baik.
+    *   **Advanced Expanded Table UX**: 
+        - Desain baris tabel yang dapat melebar (**Expanded Row**) dengan *nested table* yang memiliki efek hover halus dan border aksen ungu.
+        - Penggunaan font **Monospace** pada seluruh data numerik dan kode untuk standarisasi audit visual yang presisi.
+    *   **Visual Engagement & Feedback**: 
+        - Implementasi **Pulse Animation** pada status transaksi untuk memberikan sinyal visual yang dinamis.
+        - Integrasi grid informasi premium dengan ikon `HiShoppingCart`, `HiClipboardList`, dan `HiClock` untuk navigasi informasi yang lebih intuitif.
+    *   **Clean Labeling UX**: Penghapusan field-field redundan (seperti Periode/Tanggal Perolehan) untuk meminimalkan beban kognitif pengguna selama proses pengadaan.
+    *   **Dynamic Inventory Integration**: Optimasi UI `AsyncSelect` yang dikalibrasi khusus untuk pencarian katalog **Inventaris/Aset** secara real-time.
+
+---
+
+
 ### **Mei 12, 2026**
 - **Inventory & Inspection UX**:
     *   **Smart Inspection Warning System**: Implementasi kolom **"Pemeriksaan"** pada tabel Stok Inventaris yang otomatis menganalisis riwayat inspeksi terakhir.

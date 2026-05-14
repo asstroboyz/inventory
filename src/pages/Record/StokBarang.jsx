@@ -6,7 +6,7 @@ import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX, } from 'react-icons/hi'
+import { HiCollection, HiSearch, HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiX, HiMinus, HiAdjustments } from 'react-icons/hi'
 
 // ---------------------------------------------------------------------------
 // Shared AsyncSelect styles
@@ -94,8 +94,10 @@ const CustomPremiumTable = ({
   totalPages,
   setCurrentPage,
   onEdit,
-  onDelete
+  onDelete,
+  onOpenAdjust // New prop
 }) => {
+
   return (
     <div className="w-full overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
       <div className="overflow-x-auto">
@@ -105,7 +107,7 @@ const CustomPremiumTable = ({
               <th className="px-6 py-4">No</th>
               <th className="px-6 py-4">Nama Barang (Catalog)</th>
               <th className="px-6 py-4">Tipe / Spesifikasi</th>
-              <th className="px-6 py-4">Stok Saat Ini</th>
+              <th className="px-6 py-4 text-center">Stok Saat Ini</th>
               <th className="px-6 py-4">Satuan</th>
               <th className="px-6 py-4 text-right">Aksi</th>
             </tr>
@@ -120,39 +122,49 @@ const CustomPremiumTable = ({
                 <td colSpan="6" className="px-6 py-20 text-center text-gray-500">Tidak ada data stok.</td>
               </tr>
             ) : (
-              data.map((row, index) => (
-                <tr key={row.ID || index} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-6 py-4 text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-gray-800 dark:text-gray-200">{row.master_barang?.nama_brg}</span>
-                      <span className="text-[10px] text-gray-400 font-mono">{row.master_barang?.kode_brg}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {row.master_detail?.tipe_barang || '-'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full font-bold font-mono ${row.stok > 10 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                      }`}>
-                      {row.stok}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm uppercase font-semibold text-gray-500">
-                    {row.satuan?.nama_satuan || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button onClick={() => onEdit(row)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all">
-                        <HiPencil className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => onDelete(row.ID || row.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all">
-                        <HiTrash className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              data.map((row, index) => {
+                const rowId = row.ID || row.id
+
+                return (
+                  <tr key={rowId} className="text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-6 py-4 text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{row.master_barang?.nama_brg}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">{row.master_barang?.kode_brg}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {row.master_detail?.tipe_barang || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-4 py-1.5 rounded-xl font-bold font-mono inline-block min-w-[3.5rem] shadow-sm ${row.stok > 10 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
+                        {row.stok}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm uppercase font-semibold text-gray-500">
+                      {row.satuan?.nama_satuan || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => onOpenAdjust(row)}
+                          className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-xl transition-all"
+                          title="Sesuaikan Stok"
+                        >
+                          <HiAdjustments className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => onEdit(row)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all">
+                          <HiPencil className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => onDelete(row.ID || row.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all">
+                          <HiTrash className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -192,6 +204,11 @@ function StokBarang() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
+  // Adjustment Modal State
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false)
+  const [adjustingItem, setAdjustingItem] = useState(null)
+  const [adjustAmount, setAdjustAmount] = useState(1)
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -203,7 +220,7 @@ function StokBarang() {
   // -------------------------------------------------------------------------
   // Form — useFieldArray for bulk mode; same form used for edit (fields[0])
   // -------------------------------------------------------------------------
-  const { register, handleSubmit, reset, control, watch } = useForm({
+  const { register, handleSubmit, reset, control, watch, setValue } = useForm({
     defaultValues: defaultBulkValues()
   })
 
@@ -213,6 +230,37 @@ function StokBarang() {
   })
 
   const watchItems = watch('items') || []
+
+  const handleAdjustStok = async (row, amount) => {
+    const adjAmount = parseInt(amount) || 0
+    if (adjAmount === 0) return
+
+    const currentStok = parseInt(row.stok) || 0
+    const newStok = Math.max(0, currentStok + adjAmount)
+
+    try {
+      const payload = {
+        id: parseInt(row.ID || row.id),
+        master_barang_id: parseInt(row.master_barang_id),
+        satuan_id: parseInt(row.satuan_id),
+        stok: newStok,
+      }
+      const res = await fetch(`${BaseUrl}/api/record/barang/`, {
+        method: 'PUT',
+        headers: UserHelper.jsonHeader(),
+        body: JSON.stringify(payload)
+      })
+      if (res.ok) {
+        toast.success(`Stok berhasil ${adjAmount > 0 ? 'ditambah' : 'dikurangi'} ${Math.abs(adjAmount)}`)
+        fetchData()
+      } else {
+        const result = await res.json()
+        toast.error(result.message || 'Gagal memperbarui stok')
+      }
+    } catch {
+      toast.error('Kesalahan sistem')
+    }
+  }
 
   // Helper to check for duplicate barang-satuan combination in bulk mode
   const isDuplicateCombination = (barangId, satuanId, currentIndex) => {
@@ -448,6 +496,11 @@ function StokBarang() {
           setCurrentPage={setCurrentPage}
           onEdit={openModal}
           onDelete={handleDelete}
+          onOpenAdjust={(item) => {
+            setAdjustingItem(item)
+            setAdjustAmount(1)
+            setIsAdjustModalOpen(true)
+          }}
         />
 
         {/* ================================================================
@@ -574,13 +627,41 @@ function StokBarang() {
                           <span className="text-gray-700 dark:text-gray-400 font-bold uppercase text-[10px] tracking-wider">
                             Stok
                           </span>
-                          <input
-                            {...register(`items.${index}.stok`, { required: true, min: 0 })}
-                            type="number"
-                            placeholder="0"
-                            min={0}
-                            className="form-input mt-1.5"
-                          />
+                          <div className={`flex items-center mt-1.5 gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-1 shadow-sm ${editingId ? 'bg-gray-100 dark:bg-gray-900/50' : ''}`}>
+                            {!editingId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentVal = parseInt(watchItems[index]?.stok) || 0
+                                  setValue(`items.${index}.stok`, Math.max(0, currentVal - 1))
+                                }}
+                                className="p-1.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-lg hover:bg-red-100 transition-all"
+                              >
+                                <HiMinus className="w-4 h-4" />
+                              </button>
+                            )}
+                            <input
+                              {...register(`items.${index}.stok`, { required: true, min: 0 })}
+                              type="number"
+                              placeholder="0"
+                              min={0}
+                              readOnly={!!editingId}
+                              className={`w-full text-center bg-transparent border-none focus:ring-0 font-mono font-bold text-sm ${editingId ? 'cursor-not-allowed opacity-70' : ''}`}
+                            />
+                            {!editingId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentVal = parseInt(watchItems[index]?.stok) || 0
+                                  setValue(`items.${index}.stok`, currentVal + 1)
+                                }}
+                                className="p-1.5 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 rounded-lg hover:bg-green-100 transition-all"
+                              >
+                                <HiPlus className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+
                         </div>
 
                         <div className="flex justify-center pb-1">
@@ -622,6 +703,79 @@ function StokBarang() {
                   </div>
                 </footer>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================
+            Adjustment Modal
+        ================================================================ */}
+        {isAdjustModalOpen && adjustingItem && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-white/10 overflow-hidden animate-in fade-in zoom-in duration-200">
+              <header className="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Penyesuaian Stok</h3>
+                  <p className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">{adjustingItem.master_barang?.nama_brg}</p>
+                </div>
+                <button onClick={() => setIsAdjustModalOpen(false)} className="p-2 text-gray-400 hover:text-red-500 rounded-full">
+                  <HiX className="w-5 h-5" />
+                </button>
+              </header>
+
+              <div className="p-6 space-y-6">
+                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl">
+                  <span className="text-sm text-gray-500">Stok Saat Ini</span>
+                  <span className="text-2xl font-bold font-mono text-blue-600 dark:text-blue-400">{adjustingItem.stok}</span>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest text-center">Nominal Penyesuaian</label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setAdjustAmount(Math.max(1, adjustAmount - 1))}
+                      className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-gray-200 transition-all shadow-sm"
+                    >
+                      <HiMinus className="w-5 h-5" />
+                    </button>
+                    <input
+                      type="number"
+                      value={adjustAmount}
+                      onChange={(e) => setAdjustAmount(Math.max(1, parseInt(e.target.value) || 0))}
+                      className="flex-1 text-center text-2xl font-bold font-mono bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-2xl py-3 focus:border-blue-500 outline-none transition-all"
+                    />
+                    <button
+                      onClick={() => setAdjustAmount(adjustAmount + 1)}
+                      className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-gray-200 transition-all shadow-sm"
+                    >
+                      <HiPlus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={async () => {
+                      await handleAdjustStok(adjustingItem, -adjustAmount)
+                      setIsAdjustModalOpen(false)
+                    }}
+                    className="flex flex-col items-center gap-1 py-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-all border border-red-100 dark:border-red-900/30 group"
+                  >
+                    <HiMinus className="w-6 h-6 group-active:scale-90 transition-transform" />
+                    <span className="text-xs font-bold uppercase">Kurangi Stok</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleAdjustStok(adjustingItem, adjustAmount)
+                      setIsAdjustModalOpen(false)
+                    }}
+                    className="flex flex-col items-center gap-1 py-4 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-2xl hover:bg-green-100 dark:hover:bg-green-900/40 transition-all border border-green-100 dark:border-green-900/30 group"
+                  >
+                    <HiPlus className="w-6 h-6 group-active:scale-90 transition-transform" />
+                    <span className="text-xs font-bold uppercase">Tambah Stok</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
