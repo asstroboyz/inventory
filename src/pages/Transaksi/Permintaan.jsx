@@ -3,7 +3,7 @@ import Layout from '../../layout/Layout'
 import { BaseUrl } from '../../helper/api'
 import { UserHelper } from '../../helper/user'
 import toast from 'react-hot-toast'
-import { HiSearch, HiClipboardList, HiChevronLeft, HiChevronRight, HiX, HiEye, HiCheckCircle, HiClock, HiExclamationCircle, HiPlus, HiTrash, HiChevronDown } from 'react-icons/hi'
+import { HiSearch, HiClipboardList, HiChevronLeft, HiChevronRight, HiX, HiEye, HiCheckCircle, HiClock, HiExclamationCircle, HiPlus, HiTrash, HiChevronDown, HiLogin } from 'react-icons/hi'
 import { FaRegPlusSquare } from 'react-icons/fa'
 import AsyncSelect from 'react-select/async'
 import Swal from 'sweetalert2'
@@ -20,7 +20,7 @@ const CustomPremiumTable = ({
   setCurrentPage,
   onDetail,
   onUpdateStatus,
-  userAuthority
+  onReceiveStock
 }) => {
   const [expandedId, setExpandedId] = useState(null)
 
@@ -97,19 +97,24 @@ const CustomPremiumTable = ({
                       {row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${
-                        row.status?.toLowerCase() === 'approved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' :
-                        row.status?.toLowerCase() === 'rejected' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' :
-                        'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${row.status?.toLowerCase() === 'approved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' :
+                        row.status?.toLowerCase() === 'completed' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' :
+                          row.status?.toLowerCase() === 'rejected' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' :
+                            'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
+                        }`}>
                         {row.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end space-x-2">
-                        <button onClick={() => onDetail(row)} className="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition-all">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => onDetail(row)} className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition-all" title="Detail Permintaan">
                           <HiEye className="w-5 h-5" />
                         </button>
+                        {row.status?.toLowerCase() === 'approved' && !UserHelper.isStaff() && (
+                          <button onClick={() => onReceiveStock(row)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="Proses Barang Masuk">
+                            <HiLogin className="w-5 h-5" />
+                          </button>
+                        )}
                         {row.status === 'Pending' && UserHelper.isApprover() && (
                           <>
                             <button onClick={() => onUpdateStatus(row, 'Approved')} className="p-2 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-xl transition-all">
@@ -199,6 +204,7 @@ function Permintaan() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isStockInModalOpen, setIsStockInModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   // User data and authority helpers are now centralized in UserHelper
 
@@ -208,6 +214,13 @@ function Permintaan() {
     details: [
       { barang_r_id: '', barang_label: '', jumlah: 1, keperluan: '' }
     ]
+  })
+
+  const [stockInFormData, setStockInFormData] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    keterangan: '',
+    permintaan_id: null,
+    items: []
   })
 
   // Pagination States
@@ -381,8 +394,66 @@ function Permintaan() {
     }
   }
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const handleReceiveStock = (item) => {
+    setSelectedItem(item)
+    console.log("Data Permintaan", item)
+    setStockInFormData({
+      tanggal: new Date().toISOString().split('T')[0],
+      keterangan: `Penambahan stok dari permintaan: ${item.permintaan_code}`,
+      permintaan_id: item.ID,
+      items: item.details?.filter(d => d.status?.toLowerCase() === 'approved').map(d => ({
+        barang_r_id: d.barang_r_id,
+        nama_brg: d.barang_r?.master_barang?.nama_brg,
+        kode_brg: d.barang_r?.master_barang?.kode_brg,
+        jumlah: d.jumlah,
+        satuan: d.barang_r?.satuan?.nama_satuan
+      })) || []
+    })
+    setIsStockInModalOpen(true)
+  }
 
+  const handleSubmitStockIn = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${BaseUrl}/api/record/trans-in/`, {
+        method: 'POST',
+        headers: UserHelper.jsonHeader(),
+        body: JSON.stringify(stockInFormData)
+      })
+
+      if (res.ok) {
+        toast.success('Stok berhasil ditambahkan!')
+
+        // Update status Permintaan to 'completed'
+        try {
+          const statusPayload = {
+            details: selectedItem.details?.filter(d => d.status?.toLowerCase() === 'approved').map(d => ({
+              id: d.ID,
+              status: 'completed'
+            })),
+            note: "Stok telah ditambahkan oleh gudang."
+          }
+          await fetch(`${BaseUrl}/api/transaction/permintaan/${selectedItem.ID}/status`, {
+            method: 'PUT',
+            headers: UserHelper.jsonHeader(),
+            body: JSON.stringify(statusPayload)
+          })
+        } catch (err) {
+          console.error("Gagal update status permintaan:", err)
+        }
+
+        setIsStockInModalOpen(false)
+        fetchData()
+      } else {
+        const result = await res.json()
+        toast.error(result.message || 'Gagal menyimpan stok')
+      }
+    } catch {
+      toast.error('Kesalahan sistem')
+    }
+  }
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   return (
     <Layout>
@@ -434,6 +505,7 @@ function Permintaan() {
           setCurrentPage={setCurrentPage}
           onDetail={(item) => { setSelectedItem(item); setIsDetailModalOpen(true); }}
           onUpdateStatus={handleUpdateStatus}
+          onReceiveStock={handleReceiveStock}
         />
 
         {/* Modal Detail */}
@@ -515,8 +587,9 @@ function Permintaan() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${det.status?.toLowerCase() === 'approved' ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' :
-                              det.status?.toLowerCase() === 'rejected' ? 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' :
-                                'text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400'
+                              det.status?.toLowerCase() === 'completed' ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' :
+                                det.status?.toLowerCase() === 'rejected' ? 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' :
+                                  'text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400'
                               }`}>
                               {det.status}
                             </span>
@@ -690,6 +763,104 @@ function Permintaan() {
                 <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 border-t flex justify-end gap-3">
                   <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-6 py-2 text-sm font-bold text-gray-500">Batal</button>
                   <button type="submit" className="px-10 py-2 text-sm font-bold text-white bg-purple-600 rounded-xl shadow-lg hover:bg-purple-700">Simpan Permintaan</button>
+                </footer>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Stok Masuk dari Permintaan */}
+        {isStockInModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <header className="px-8 py-6 border-b dark:border-gray-700 flex justify-between items-center bg-blue-50/50 dark:bg-blue-900/20">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    Konfirmasi Penambahan Stok
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Verifikasi jumlah barang yang masuk berdasarkan permintaan <span className="font-bold text-blue-600">{selectedItem?.permintaan_code}</span></p>
+                </div>
+                <button onClick={() => setIsStockInModalOpen(false)} className="p-2 text-gray-400 hover:text-red-500 transition-all"><HiX className="w-6 h-6" /></button>
+              </header>
+
+              <form onSubmit={handleSubmitStockIn} className="flex flex-col overflow-hidden">
+                <div className="p-8 overflow-y-auto space-y-6 no-scrollbar">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <label className="block text-sm">
+                      <span className="font-bold text-[10px] uppercase text-gray-500 tracking-widest">Tanggal Penerimaan</span>
+                      <input
+                        type="date"
+                        required
+                        className="form-input mt-2"
+                        value={stockInFormData.tanggal}
+                        onChange={(e) => setStockInFormData({ ...stockInFormData, tanggal: e.target.value })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="font-bold text-[10px] uppercase text-gray-500 tracking-widest">Keterangan</span>
+                      <input
+                        className="form-input mt-2"
+                        placeholder="Contoh: Barang sudah diterima lengkap"
+                        value={stockInFormData.keterangan}
+                        onChange={(e) => setStockInFormData({ ...stockInFormData, keterangan: e.target.value })}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-900/50 text-[10px] font-black uppercase text-gray-400">
+                        <tr>
+                          <th className="px-6 py-4 text-left">Nama Barang</th>
+                          <th className="px-6 py-4 text-center w-32">Jumlah (Adjustable)</th>
+                          <th className="px-6 py-4 text-left w-24">Satuan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y dark:divide-gray-700">
+                        {stockInFormData.items.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-800 dark:text-gray-200">{item.nama_brg}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">{item.kode_brg}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <input
+                                type="number"
+                                min="1"
+                                required
+                                className="w-full px-4 py-2 text-center font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-none focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={item.jumlah}
+                                onChange={(e) => {
+                                  const newItems = [...stockInFormData.items]
+                                  newItems[index].jumlah = parseInt(e.target.value)
+                                  setStockInFormData({ ...stockInFormData, items: newItems })
+                                }}
+                              />
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs font-bold text-gray-500 uppercase">{item.satuan}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="bg-orange-50 dark:bg-orange-900/10 p-4 rounded-2xl border border-orange-100 dark:border-orange-800 flex gap-3">
+                    <HiExclamationCircle className="w-6 h-6 text-orange-500 shrink-0" />
+                    <p className="text-xs text-orange-700 dark:text-orange-300 italic">
+                      Silakan sesuaikan jumlah barang jika barang yang diterima berbeda dengan jumlah permintaan. Klik simpan untuk memperbarui stok gudang.
+                    </p>
+                  </div>
+                </div>
+
+                <footer className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 border-t dark:border-gray-700 flex justify-end gap-3">
+                  <button type="button" onClick={() => setIsStockInModalOpen(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">Batal</button>
+                  <button type="submit" className="px-10 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-2xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
+                    Simpan Penambahan Stok
+                  </button>
                 </footer>
               </form>
             </div>

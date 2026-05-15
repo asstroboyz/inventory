@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react'
 import axios from 'axios'
-import { HiChatAlt2 } from 'react-icons/hi'
+import { HiChatAlt2, HiBell } from 'react-icons/hi'
 import { ThemeContext } from '../context/ThemeContext'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -26,27 +26,42 @@ function Header() {
   const user = UserHelper.getUser()
   const [unreadCount, setUnreadCount] = useState(0)
   const [proposalCount, setProposalCount] = useState(0)
+  const [notifications, setNotifications] = useState([])
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+
+  const fetchUnread = async () => {
+    try {
+      const config = UserHelper.axiosConfig()
+      if (!config) return
+      const res = await axios.get(`${BaseUrl}/api/chat/rooms`, config)
+      const rooms = res.data.data || []
+      
+      const totalUnread = rooms.reduce((acc, room) => acc + (room.unread_count || 0), 0)
+      const totalProposals = rooms.reduce((acc, room) => acc + (room.proposal_count || 0), 0)
+      
+      setUnreadCount(totalUnread)
+      setProposalCount(totalProposals)
+    } catch (_err) {
+      // Silently fail
+    }
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const config = UserHelper.axiosConfig()
+      if (!config) return
+      const res = await axios.get(`${BaseUrl}/api/notification/`, config)
+      setNotifications(res.data.data || [])
+    } catch (_err) {
+      // Silently fail
+    }
+  }
 
   useEffect(() => {
-    const fetchUnread = async () => {
-      try {
-        const config = UserHelper.axiosConfig()
-        if (!config) return
-        const res = await axios.get(`${BaseUrl}/api/chat/rooms`, config)
-        const rooms = res.data.data || []
-        
-        const totalUnread = rooms.reduce((acc, room) => acc + (room.unread_count || 0), 0)
-        const totalProposals = rooms.reduce((acc, room) => acc + (room.proposal_count || 0), 0)
-        
-        setUnreadCount(totalUnread)
-        setProposalCount(totalProposals)
-      } catch (_err) {
-        // Silently fail
-      }
-    }
 
     // Fetch awal saat mount
     fetchUnread()
+    fetchNotifications()
 
     // WebSocket: listen event chat lalu re-fetch unread
     if (!BaseUrl) return
@@ -74,6 +89,16 @@ function Header() {
           const payload = JSON.parse(event.data)
           if (['new_message', 'delete_message', 'read_receipt'].includes(payload.event)) {
             fetchUnread()
+          }
+          if (payload.event === 'notification') {
+            const user = UserHelper.getUser()
+            if (payload.data && payload.data.user_id == user?.ID) {
+              toast.success(payload.data.title, {
+                icon: '🔔',
+                duration: 4000
+              })
+              fetchNotifications()
+            }
           }
         } catch (_err) {
           // Silently fail
@@ -212,6 +237,88 @@ function Header() {
                 </div>
               )}
             </button>
+          </li>
+
+          {/* Notification Icon */}
+          <li className="relative">
+            <button
+              className="relative align-middle rounded-md focus:outline-none focus:shadow-outline-purple text-purple-600 dark:text-purple-300 transition-colors duration-150"
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              aria-label="Notifications"
+            >
+              <HiBell className="w-6 h-6" />
+              {notifications.filter(n => !n.is_read).length > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-600 rounded-full border-2 border-white dark:border-gray-800 transform translate-x-1/2 -translate-y-1/2"
+                >
+                  {notifications.filter(n => !n.is_read).length}
+                </span>
+              )}
+            </button>
+
+            {isNotificationOpen && (
+              <div className="absolute right-0 w-80 mt-2 bg-white rounded-2xl shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-3 border-b dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex justify-between items-center">
+                  <span className="text-xs font-black uppercase tracking-widest text-gray-500">Notifikasi</span>
+                  <button 
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      try {
+                        const config = UserHelper.axiosConfig()
+                        if (!config) return
+                        await Promise.all(
+                          notifications.filter(n => !n.is_read).map(n => 
+                            axios.put(`${BaseUrl}/api/notification/${n.ID}/read`, {}, config)
+                          )
+                        )
+                        fetchNotifications()
+                      } catch (err) {
+                        console.error(err)
+                      }
+                    }}
+                    className="text-[10px] text-purple-600 hover:underline font-bold"
+                  >
+                    Tandai dibaca
+                  </button>
+                </div>
+                <div className="max-h-96 overflow-y-auto no-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <HiBell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400">Tidak ada notifikasi baru</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.ID} 
+                        onClick={async () => {
+                          if (!n.is_read) {
+                            try {
+                              const config = UserHelper.axiosConfig()
+                              await axios.put(`${BaseUrl}/api/notification/${n.ID}/read`, {}, config)
+                              fetchNotifications()
+                            } catch (err) { console.error(err) }
+                          }
+                          if (n.link) navigate(n.link)
+                          setIsNotificationOpen(false)
+                        }}
+                        className={`px-4 py-4 border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer transition-colors relative ${!n.is_read ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-white dark:bg-gray-800'}`}
+                      >
+                        {!n.is_read && (
+                          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-purple-600 rounded-full"></div>
+                        )}
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{n.title}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>
+                        <p className="text-[9px] text-gray-400 mt-2 uppercase font-black">
+                          {new Date(n.CreatedAt).toLocaleDateString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </li>
 
           {/* Profile menu */}

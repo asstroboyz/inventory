@@ -4,7 +4,6 @@ import { ThemeContext } from '../../context/ThemeContext'
 import { menus } from '../../constants/menus'
 import {
   HiChartPie,
-  HiBeaker,
   HiChevronDown,
   HiUsers,
   HiCube,
@@ -37,9 +36,7 @@ function SidebarContent() {
     masterProduct: false,
     history: false,
     transaksi: false,
-    masterLokasi: false,
-    monitoringStok: false,
-    development: false
+    monitoringStok: false
   })
 
   const toggleMenu = (menu) => {
@@ -112,10 +109,32 @@ function SidebarContent() {
       </div>
 
       <ul className="mt-6 flex-1 overflow-y-auto no-scrollbar scroll-smooth">
-        {/* --- DASHBOARD --- */}
+        {/* --- MAIN SECTION --- */}
+        <div className="px-6 py-2 text-xs font-bold tracking-wider text-gray-400 uppercase">
+          Utama
+        </div>
         <MainMenuItem to="/dashboard" name="Dashboard" icon={<HiChartPie className="w-5 h-5" />} active={isActive('/dashboard')} />
 
+        {/* --- DATA MASTER SECTION --- */}
+        <div className="px-6 py-2 mt-4 text-xs font-bold tracking-wider text-gray-400 uppercase border-t border-gray-100 dark:border-gray-700">
+          Master Data
+        </div>
 
+        {/* --- MASTER PRODUCT --- */}
+        <DropdownMenuItem
+          name="Master Product"
+          icon={<HiCube className="w-5 h-5" />}
+          isOpen={openMenus.masterProduct}
+          onClick={() => toggleMenu('masterProduct')}
+        >
+          <SubMenuItem to="/master/barang" name="Barang" icon={<HiArchive className="w-4 h-4" />} />
+          <SubMenuItem to="/master/jenis-barang" name="Jenis Barang" icon={<HiTag className="w-4 h-4" />} />
+          <SubMenuItem to="/master/merk" name="Merk" icon={<HiCollection className="w-4 h-4" />} />
+          <SubMenuItem to="/master/satuan" name="Satuan" icon={<HiCube className="w-4 h-4" />} />
+          <SubMenuItem to="/master/tipe-barang" name="Tipe Barang" icon={<HiTag className="w-4 h-4" />} />
+          <SubMenuItem to="/master/jenis-transaksi" name="Jenis Transaksi" icon={<HiSwitchHorizontal className="w-4 h-4" />} />
+          <SubMenuItem to="/master/supplier" name="Supplier" icon={<HiTruck className="w-4 h-4" />} />
+        </DropdownMenuItem>
 
         {/* --- MASTER PEGAWAI --- */}
         <DropdownMenuItem
@@ -129,30 +148,14 @@ function SidebarContent() {
           <SubMenuItem to="/master/bagian" name="Bagian" icon={<HiOfficeBuilding className="w-4 h-4" />} />
         </DropdownMenuItem>
 
-        {/* --- MASTER PRODUCT --- */}
-        <DropdownMenuItem
-          name="Master Product"
-          icon={<HiCube className="w-5 h-5" />}
-          isOpen={openMenus.masterProduct}
-          onClick={() => toggleMenu('masterProduct')}
-        >
-          <SubMenuItem to="/master/barang" name="Barang" icon={<HiArchive className="w-4 h-4" />} />
-          <SubMenuItem to="/master/jenis-barang" name="Jenis Barang" icon={<HiTag className="w-4 h-4" />} />
-          <SubMenuItem to="/master/merk" name="Merk" icon={<HiCollection className="w-4 h-4" />} />
-          <SubMenuItem to="/master/satuan" name="Satuan" icon={<HiCube className="w-4 h-4" />} />
-          <SubMenuItem to="/master/supplier" name="Supplier" icon={<HiTruck className="w-4 h-4" />} />
-        </DropdownMenuItem>
+        {/* --- MASTER LOKASI (Single Item) --- */}
+        <MainMenuItem to="/master/ruangan" name="Master Ruangan" icon={<HiHome className="w-5 h-5" />} active={isActive('/master/ruangan')} />
 
-        {/* --- MASTER LOKASI --- */}
-        <DropdownMenuItem
-          name="Master Lokasi"
-          icon={<HiHome className="w-5 h-5" />}
-          isOpen={openMenus.masterLokasi}
-          onClick={() => toggleMenu('masterLokasi')}
-        >
-          <SubMenuItem to="/master/ruangan" name="Ruangan" icon={<HiOfficeBuilding className="w-4 h-4" />} />
-        </DropdownMenuItem>
-
+        {/* --- OPERATIONAL SECTION --- */}
+        <div className="px-6 py-2 mt-4 text-xs font-bold tracking-wider text-gray-400 uppercase border-t border-gray-100 dark:border-gray-700">
+          Transaksi & Stok
+        </div>
+        
         {/* --- TRANSAKSI --- */}
         <DropdownMenuItem
           name="Transaksi"
@@ -164,52 +167,34 @@ function SidebarContent() {
           <SubMenuItem to="/transaksi/pengadaan" name="Pengadaan Barang" icon={<HiPlus className="w-4 h-4" />} />
         </DropdownMenuItem>
 
-        {/* --- MONITORING STOK --- */}
+        {/* --- RECORD & MONITORING --- */}
         <DropdownMenuItem
-          name="Monitoring Stok"
+          name="Record & Stok"
           icon={<HiCollection className="w-5 h-5" />}
           isOpen={openMenus.monitoringStok}
           onClick={() => toggleMenu('monitoringStok')}
         >
           <SubMenuItem to="/record/barang" name="Stok ATK" icon={<HiArchive className="w-4 h-4" />} />
           <SubMenuItem to="/record/inventaris" name="Daftar Aset" icon={<HiBriefcase className="w-4 h-4" />} />
+          <SubMenuItem to="/maintenance" name="Manajemen Aset" icon={<HiCog className="w-4 h-4" />} />
         </DropdownMenuItem>
 
-        {/* --- PEMELIHARAAN (Asset Management) --- */}
-        <MainMenuItem to="/maintenance" name="Manajemen Aset" icon={<HiCog className="w-5 h-5" />} active={isActive('/maintenance')} />
+        {/* --- HISTORY SECTION --- */}
+        <div className="px-6 py-2 mt-4 text-xs font-bold tracking-wider text-gray-400 uppercase border-t border-gray-100 dark:border-gray-700">
+          History
+        </div>
 
         {/* --- HISTORY --- */}
         <DropdownMenuItem
-          name="History"
+          name="Riwayat Transaksi"
           icon={<HiRefresh className="w-5 h-5" />}
           isOpen={openMenus.history}
           onClick={() => toggleMenu('history')}
         >
-          <SubMenuItem to="/history/in" name="Trans In" icon={<HiLogin className="w-4 h-4" />} />
-          <SubMenuItem to="/history/out" name="Trans Out" icon={<HiLogout className="w-4 h-4" />} />
+          <SubMenuItem to="/history/in" name="Barang Masuk" icon={<HiLogin className="w-4 h-4" />} />
+          <SubMenuItem to="/history/out" name="Barang Keluar" icon={<HiLogout className="w-4 h-4" />} />
         </DropdownMenuItem>
 
-        {/* --- DEVELOPMENT DROPDOWN --- */}
-        <div className="px-6 my-6">
-          <div className="h-[3px] w-full bg-gray-200 dark:bg-gray-600 rounded-full"></div>
-        </div>
-
-        <div className="">
-          <DropdownMenuItem
-            name="Development"
-            icon={<HiBeaker className="w-5 h-5 opacity-50" />}
-            isOpen={openMenus.development}
-            onClick={() => toggleMenu('development')}
-            colorClass="text-gray-400"
-          >
-            <SubMenuItem to="/forms" name="Forms" />
-            <SubMenuItem to="/cards" name="Cards" />
-            <SubMenuItem to="/charts" name="Charts" />
-            <SubMenuItem to="/buttons" name="Buttons" />
-            <SubMenuItem to="/modals" name="Modals" />
-            <SubMenuItem to="/tables" name="Tables" />
-          </DropdownMenuItem>
-        </div>
       </ul>
 
     </div>

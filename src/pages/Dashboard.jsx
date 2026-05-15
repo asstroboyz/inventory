@@ -115,7 +115,7 @@ function Dashboard() {
         // Menggunakan setUserName setelah await (asynchronous) untuk menghindari warning cascading renders
         const user = UserHelper.getUser()
         if (user) {
-          setUserName(user.first_name || user.nickname || 'User')
+          setUserName(user.nama_depan + ' ' + user.nama_belakang || user.username || 'User')
           setUserRole(user.otoritas_id)
         }
 
@@ -363,7 +363,7 @@ function Dashboard() {
                   {(!recentActivities || recentActivities.length === 0) ? (
                     <p className="text-center py-8 text-gray-500 text-sm font-bold">Tidak ada aktivitas terbaru.</p>
                   ) : (
-                    (recentActivities || []).slice(0, 8).map((act, i) => (
+                    (recentActivities || []).slice(0, 3).map((act, i) => (
                       <RecentActivity
                         key={i}
                         title={act?.title}
