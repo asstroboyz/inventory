@@ -4,19 +4,32 @@ import toast from 'react-hot-toast'
 import ImageLight from '../assets/img/create-account-office.jpeg'
 import ImageDark from '../assets/img/create-account-office-dark.jpeg'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.100:8080'
+const API_URL = import.meta.env.VITE_API_URL
+
+const generateNip = () => `BPS-${Date.now()}`
+
+const BAGIAN_OPTIONS = [
+  { id: 1, code: 'BGN-IT', nama: 'Information Technology' },
+  { id: 2, code: 'BGN-KU', nama: 'Keuangan' },
+  { id: 3, code: 'BGN-TU', nama: 'Tata Usaha' },
+  { id: 4, code: 'BGN-PG', nama: 'Pengadaan' },
+  { id: 5, code: 'BGN-UM', nama: 'Umum' },
+]
 
 function CreateAccount() {
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState({
-    nickname: '',
-    first_name: '',
-    last_name: '',
+    username: '',
+    nama_depan: '',
+    nama_belakang: '',
+    nip: generateNip(),
     email: '',
     password: '',
     confirm_password: '',
     phone: '',
+    bagian_id: '',
+    jenis_kelamin: '',
   })
   const [loading, setLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
@@ -41,14 +54,17 @@ function CreateAccount() {
     setLoading(true)
     try {
       const payload = {
-        nickname: formData.nickname,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
+        username: formData.username.trim(),
+        nama_depan: formData.nama_depan.trim(),
+        nama_belakang: formData.nama_belakang.trim(),
+        nama_lengkap: `${formData.nama_depan} ${formData.nama_belakang}`.trim(),
+        nip: formData.nip.trim(),
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        otoritas: 2,     // default: user biasa
+        bagian_id: Number(formData.bagian_id),
         status: 'active',
+        jenis_kelamin: formData.jenis_kelamin,
       }
 
       const res = await fetch(`${API_URL}/api/auth/register`, {
@@ -112,17 +128,17 @@ function CreateAccount() {
 
 
               <form className="space-y-4" onSubmit={handleSubmit}>
-                {/* Nickname */}
+                {/* Username */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Nickname
+                    Username
                   </label>
                   <input
                     className="form-input"
                     placeholder="johndoe"
                     type="text"
-                    name="nickname"
-                    value={formData.nickname}
+                    name="username"
+                    value={formData.username}
                     onChange={handleChange}
                     required
                   />
@@ -138,8 +154,8 @@ function CreateAccount() {
                       className="form-input"
                       placeholder="John"
                       type="text"
-                      name="first_name"
-                      value={formData.first_name}
+                      name="nama_depan"
+                      value={formData.nama_depan}
                       onChange={handleChange}
                       required
                     />
@@ -152,12 +168,26 @@ function CreateAccount() {
                       className="form-input"
                       placeholder="Doe"
                       type="text"
-                      name="last_name"
-                      value={formData.last_name}
+                      name="nama_belakang"
+                      value={formData.nama_belakang}
                       onChange={handleChange}
                       required
                     />
                   </div>
+                </div>
+
+                {/* NIP */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    NIP
+                  </label>
+                  <input
+                    className="form-input disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                    type="text"
+                    name="nip"
+                    value={formData.nip}
+                    disabled
+                  />
                 </div>
 
                 {/* Email */}
@@ -190,6 +220,57 @@ function CreateAccount() {
                     onChange={handleChange}
                     required
                   />
+                </div>
+
+                {/* Bagian */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Bagian / Unit Kerja
+                  </label>
+                  <select
+                    className="form-input dark:[color-scheme:dark]"
+                    name="bagian_id"
+                    value={formData.bagian_id}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100" value="" disabled>
+                      Pilih bagian
+                    </option>
+                    {BAGIAN_OPTIONS.map((bagian) => (
+                      <option
+                        className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                        key={bagian.id}
+                        value={bagian.id}
+                      >
+                        {bagian.code} - {bagian.nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Jenis Kelamin
+                  </label>
+                  <select
+                    className="form-input dark:[color-scheme:dark]"
+                    name="jenis_kelamin"
+                    value={formData.jenis_kelamin}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100" value="" disabled>
+                      Pilih jenis kelamin
+                    </option>
+                    <option className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100" value="L">
+                      Laki-laki
+                    </option>
+                    <option className="bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100" value="P">
+                      Perempuan
+                    </option>
+                  </select>
                 </div>
 
                 {/* Password */}
